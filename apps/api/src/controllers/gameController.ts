@@ -13,7 +13,7 @@ export const searchGames = async (req: Request, res: Response) => {
     if (source === 'bgg') {
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
       
-      const searchRes = await axios.get(`https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(query)}&type=boardgame`);
+      const searchRes = await axios.get(`https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(query as string)}&type=boardgame`);
       const searchData = parser.parse(searchRes.data);
       
       let items = searchData.items?.item || [];
@@ -32,7 +32,7 @@ export const searchGames = async (req: Request, res: Response) => {
       return res.json({ games });
     } else {
       const token = process.env.LUDOPEDIA_ACCESS_TOKEN;
-      const response = await axios.get(`https://ludopedia.com.br/api/v1/jogos?search=${encodeURIComponent(query)}`, {
+      const response = await axios.get(`https://ludopedia.com.br/api/v1/jogos?search=${encodeURIComponent(query as string)}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -53,6 +53,8 @@ export const searchGames = async (req: Request, res: Response) => {
   }
 };
 
+
+
 export const getGameDetails = async (req: Request, res: Response) => {
   const { id } = req.params;
   const { source } = req.query;
@@ -65,7 +67,7 @@ export const getGameDetails = async (req: Request, res: Response) => {
     if (source === 'bgg') {
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
       // Remover o prefixo 'bgg-' caso tenha vindo junto
-      const cleanId = id.replace('bgg-', '');
+      const cleanId = (id as string).replace('bgg-', '');
       
       const detailsRes = await axios.get(`https://boardgamegeek.com/xmlapi2/thing?id=${cleanId}`);
       const detailsData = parser.parse(detailsRes.data);
@@ -85,7 +87,7 @@ export const getGameDetails = async (req: Request, res: Response) => {
       return res.json({ game: gameDetails });
     } else {
       const token = process.env.LUDOPEDIA_ACCESS_TOKEN;
-      const cleanId = id.replace('ludo-', '');
+      const cleanId = (id as string).replace('ludo-', '');
 
       const response = await axios.get(`https://ludopedia.com.br/api/v1/jogos/${cleanId}`, {
         headers: {
