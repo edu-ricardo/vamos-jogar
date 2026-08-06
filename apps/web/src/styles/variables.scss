@@ -1,0 +1,55 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  // Cores Base - Premium Dark Mode
+  --bg-primary: #0a0a0b;
+  --bg-secondary: #141416;
+  --bg-tertiary: #1c1c1f;
+
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+
+  // Roxo mais claro para modo escuro
+  --accent-primary: #c084fc;
+  --accent-hover: #d8b4fe;
+  --btn-text: #18181b; // Texto escuro para dar contraste
+
+  --border-color: rgba(255, 255, 255, 0.08);
+
+  // Tipografia
+  --font-family: 'Outfit', sans-serif;
+
+  // Sombras e Bordas
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  --shadow-glow: 0 0 20px rgba(192, 132, 252, 0.3);
+  --shadow-drop: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+
+  // Transições
+  --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg-primary: #fafafa;
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f4f4f5;
+
+    --text-primary: #09090b;
+    --text-secondary: #71717a;
+
+    // Roxo mais escuro para modo claro
+    --accent-primary: #7e22ce;
+    --accent-hover: #9333ea;
+    --btn-text: #ffffff; // Texto branco para dar contraste
+
+    --border-color: rgba(0, 0, 0, 0.08);
+
+    --shadow-glow: 0 0 20px rgba(126, 34, 206, 0.15);
+    --shadow-drop: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+  }
+}
