@@ -18,7 +18,8 @@ export const JoinGroup = () => {
 
       try {
         const idToken = await user.getIdToken();
-        const response = await fetch('http://localhost:3001/api/groups/join', {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+        const response = await fetch(`${API_URL}/api/groups/join`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

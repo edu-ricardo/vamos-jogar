@@ -216,7 +216,8 @@ export const eventService = {
 
   forceReminders: async (groupId: string, eventId: string): Promise<{ success: boolean, message: string }> => {
     try {
-      const response = await fetch('http://localhost:3001/api/cron/force-event-reminders', {
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${API_URL}/api/cron/force-event-reminders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ groupId, eventId })
