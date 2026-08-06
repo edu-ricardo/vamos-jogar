@@ -20,7 +20,7 @@ app.use('/api/games', gameRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/cron', cronRoutes);
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });
