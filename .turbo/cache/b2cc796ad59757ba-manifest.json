@@ -1,0 +1,95 @@
+{
+  "files": {
+    "apps/api/dist/routes/groups.js": {
+      "size": 397,
+      "mtime_nanos": 1786041562136303500,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/controllers/cronController.js": {
+      "size": 5965,
+      "mtime_nanos": 1786041562144234300,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/routes/cron.js": {
+      "size": 594,
+      "mtime_nanos": 1786041562144234300,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/middlewares": { "size": 0, "mtime_nanos": 0, "mode": 0, "is_dir": true },
+    "apps/api/.turbo/turbo-build.log": {
+      "size": 26,
+      "mtime_nanos": 1786041562194615600,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/routes": { "size": 0, "mtime_nanos": 0, "mode": 0, "is_dir": true },
+    "apps/api/dist/routes/games.js": {
+      "size": 487,
+      "mtime_nanos": 1786041562133777700,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/controllers": { "size": 0, "mtime_nanos": 0, "mode": 0, "is_dir": true },
+    "apps/api/dist/lib": { "size": 0, "mtime_nanos": 0, "mode": 0, "is_dir": true },
+    "apps/api/dist/index.js": {
+      "size": 1018,
+      "mtime_nanos": 1786041562146310800,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/controllers/gameController.js": {
+      "size": 4784,
+      "mtime_nanos": 1786041562132271000,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/controllers/groupController.js": {
+      "size": 1345,
+      "mtime_nanos": 1786041562135281300,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/middlewares/authMiddleware.js": {
+      "size": 728,
+      "mtime_nanos": 1786041562126009700,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/services": { "size": 0, "mtime_nanos": 0, "mode": 0, "is_dir": true },
+    "apps/api/dist/services/emailService.js": {
+      "size": 2370,
+      "mtime_nanos": 1786041562138875800,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist/lib/firebase-admin.js": {
+      "size": 665,
+      "mtime_nanos": 1786041562122334200,
+      "mode": 420,
+      "is_dir": false
+    },
+    "apps/api/dist": { "size": 0, "mtime_nanos": 0, "mode": 0, "is_dir": true }
+  },
+  "order": [
+    "apps/api/.turbo/turbo-build.log",
+    "apps/api/dist",
+    "apps/api/dist/controllers",
+    "apps/api/dist/controllers/cronController.js",
+    "apps/api/dist/controllers/gameController.js",
+    "apps/api/dist/controllers/groupController.js",
+    "apps/api/dist/index.js",
+    "apps/api/dist/lib",
+    "apps/api/dist/lib/firebase-admin.js",
+    "apps/api/dist/middlewares",
+    "apps/api/dist/middlewares/authMiddleware.js",
+    "apps/api/dist/routes",
+    "apps/api/dist/routes/cron.js",
+    "apps/api/dist/routes/games.js",
+    "apps/api/dist/routes/groups.js",
+    "apps/api/dist/services",
+    "apps/api/dist/services/emailService.js"
+  ]
+}
