@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { eventService, type Event, type EventDateOption, type EventLocationOption, type FavoriteLocation } from '../services/eventService';
 import { groupService, type Group } from '../services/groupService';
+import { ludotecaService, type Game } from '../services/ludotecaService';
 import toast from 'react-hot-toast';
 
 export const GroupDetails = () => {
@@ -31,6 +32,12 @@ export const GroupDetails = () => {
   const [showMembersModal, setShowMembersModal] = useState(false);
   const [groupDetails, setGroupDetails] = useState<Group | null>(null);
   const [members, setMembers] = useState<{id: string, name: string}[]>([]);
+  
+  // Member collection states
+  const [viewingCollectionUserId, setViewingCollectionUserId] = useState<string | null>(null);
+  const [viewingCollectionName, setViewingCollectionName] = useState<string>('');
+  const [memberGames, setMemberGames] = useState<Game[]>([]);
+  const [loadingMemberGames, setLoadingMemberGames] = useState(false);
 
   const loadGroupData = async () => {
     if (!id) return;
@@ -78,6 +85,21 @@ export const GroupDetails = () => {
       loadGroupData();
     } catch (err) {
       toast.error('Erro ao remover membro.');
+    }
+  };
+
+  const handleViewCollection = async (userId: string, userName: string) => {
+    setViewingCollectionUserId(userId);
+    setViewingCollectionName(userName);
+    setLoadingMemberGames(true);
+    try {
+      const games = await ludotecaService.fetchUserCollection(userId);
+      setMemberGames(games);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao buscar ludoteca do membro.');
+    } finally {
+      setLoadingMemberGames(false);
     }
   };
 
@@ -252,27 +274,68 @@ export const GroupDetails = () => {
       {showMembersModal && groupDetails && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
           <div style={{ background: '#1c1c1f', padding: '30px', borderRadius: '12px', width: '100%', maxWidth: '500px', border: '1px solid #444', maxHeight: '90vh', overflowY: 'auto' }}>
-            <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Membros do Grupo</h2>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-              {members.map(m => (
-                <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                  <span>{m.name} {m.id === groupDetails.adminId ? <small style={{ color: '#a1a1aa' }}>(Admin)</small> : ''}</span>
-                  {user?.uid === groupDetails.adminId && m.id !== user.uid && (
-                    <button 
-                      onClick={() => handleRemoveMember(m.id)}
-                      style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px', cursor: 'pointer' }}
-                    >
-                      Remover
-                    </button>
-                  )}
+            {viewingCollectionUserId ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', gap: '10px' }}>
+                  <button onClick={() => setViewingCollectionUserId(null)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 5px' }}>&larr;</button>
+                  <h2 style={{ margin: 0 }}>Ludoteca de {viewingCollectionName}</h2>
                 </div>
-              ))}
-            </div>
+                
+                {loadingMemberGames ? (
+                  <p style={{ color: 'var(--text-secondary)' }}>Carregando jogos...</p>
+                ) : memberGames.length === 0 ? (
+                  <p style={{ color: 'var(--text-secondary)' }}>Nenhum jogo na ludoteca.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                    {memberGames.map(g => (
+                      <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                        {g.image ? <img src={g.image} alt={g.name} style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px' }} /> : <div style={{ width: '40px', height: '40px', background: '#333', borderRadius: '4px' }} />}
+                        <div>
+                          <strong style={{ display: 'block' }}>{g.name}</strong>
+                          {g.playtime && <small style={{ color: 'var(--text-secondary)' }}>⏱ {g.playtime} min</small>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <button onClick={() => setViewingCollectionUserId(null)} className="btn-primary" style={{ width: '100%', padding: '12px' }}>
+                  Voltar aos Membros
+                </button>
+              </>
+            ) : (
+              <>
+                <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Membros do Grupo</h2>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+                  {members.map(m => (
+                    <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                      <span>{m.name} {m.id === groupDetails.adminId ? <small style={{ color: '#a1a1aa' }}>(Admin)</small> : ''}</span>
+                      <div style={{ display: 'flex', gap: '5px' }}>
+                        <button 
+                          onClick={() => handleViewCollection(m.id, m.name)}
+                          style={{ padding: '6px 12px', background: 'transparent', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)', borderRadius: '6px', cursor: 'pointer' }}
+                        >
+                          Ver Ludoteca
+                        </button>
+                        {user?.uid === groupDetails.adminId && m.id !== user.uid && (
+                          <button 
+                            onClick={() => handleRemoveMember(m.id)}
+                            style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px', cursor: 'pointer' }}
+                          >
+                            Remover
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
-            <button onClick={() => setShowMembersModal(false)} className="btn-primary" style={{ width: '100%', padding: '12px' }}>
-              Fechar
-            </button>
+                <button onClick={() => { setShowMembersModal(false); setViewingCollectionUserId(null); }} className="btn-primary" style={{ width: '100%', padding: '12px' }}>
+                  Fechar
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
