@@ -180,7 +180,7 @@ export const Ludoteca = () => {
 
       <section style={{ marginBottom: '50px', background: 'rgba(255,255,255,0.03)', padding: '20px', borderRadius: '12px' }}>
         <h2>Buscar Jogos</h2>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
           <input 
             type="text" 
             placeholder="Nome do jogo (ex: Catan)..." 
@@ -196,7 +196,7 @@ export const Ludoteca = () => {
             <option value="ludopedia">Ludopedia (BR)</option>
             <option value="bgg">BoardGameGeek (INTL)</option>
           </select>
-          <button type="submit" className="btn-primary" disabled={loading}>
+          <button type="submit" className="btn-primary" disabled={loading} style={{ padding: '12px' }}>
             {loading ? 'Buscando...' : 'Pesquisar'}
           </button>
         </form>
@@ -362,7 +362,7 @@ export const Ludoteca = () => {
 
             <div style={{ marginBottom: '30px' }}>
               <h3>Buscar e Adicionar Expansão</h3>
-              <form onSubmit={handleExpSearch} style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+              <form onSubmit={handleExpSearch} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
                 <input 
                   type="text" 
                   placeholder="Nome da expansão (deixe em branco para ver todas)..." 
