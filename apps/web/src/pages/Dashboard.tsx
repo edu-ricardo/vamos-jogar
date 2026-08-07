@@ -7,7 +7,7 @@ import { eventService, type Event } from '../services/eventService';
 export const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [upcomingEvents, setUpcomingEvents] = useState<{event: Event, groupName: string, groupId: string, displayDate: string, displayTime: string, displayLocation: string}[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<{event: Event, groupName: string, groupId: string, displayDate: string, displayTime: string, displayEndTime: string, displayLocation: string, isDateConfirmed: boolean}[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
   useEffect(() => {
@@ -15,7 +15,7 @@ export const Dashboard = () => {
       if (!user) return;
       try {
         const groups = await groupService.fetchUserGroups(user.uid);
-        let allFutureEvents: {event: Event, groupName: string, groupId: string, displayDate: string, displayTime: string, displayLocation: string}[] = [];
+        let allFutureEvents: {event: Event, groupName: string, groupId: string, displayDate: string, displayTime: string, displayEndTime: string, displayLocation: string, isDateConfirmed: boolean}[] = [];
         
         const now = new Date();
         now.setHours(0, 0, 0, 0); // Considerar eventos a partir de hoje
@@ -45,7 +45,9 @@ export const Dashboard = () => {
               groupId: group.id,
               displayDate: dateObj?.date || '',
               displayTime: dateObj?.startTime || '',
-              displayLocation: locObj?.name || 'Local a definir'
+              displayEndTime: dateObj?.endTime || '',
+              displayLocation: locObj?.name || 'Local a definir',
+              isDateConfirmed: e.status === 'VOTING_GAMES' || e.status === 'CONFIRMED'
             };
           });
           
@@ -65,6 +67,29 @@ export const Dashboard = () => {
 
     loadUpcomingEvents();
   }, [user]);
+
+  const generateGoogleCalendarUrl = (item: any) => {
+    const text = encodeURIComponent(`Jogatina: ${item.event.title} (${item.groupName})`);
+    const details = encodeURIComponent(`Evento do grupo ${item.groupName}.`);
+    const location = encodeURIComponent(item.displayLocation);
+
+    const startDate = item.displayDate.replace(/-/g, '');
+    const startTime = item.displayTime.replace(/:/g, '') + '00';
+    let endTime = '';
+
+    if (item.displayEndTime) {
+      endTime = item.displayEndTime.replace(/:/g, '') + '00';
+    } else {
+      const h = parseInt(item.displayTime.split(':')[0]);
+      const m = item.displayTime.split(':')[1];
+      const endH = Math.min(23, h + 4).toString().padStart(2, '0');
+      endTime = endH + m + '00';
+    }
+
+    const dates = `${startDate}T${startTime}/${startDate}T${endTime}`;
+    
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`;
+  };
 
   return (
     <div>
@@ -112,10 +137,32 @@ export const Dashboard = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                   <h4 style={{ margin: 0 }}>{item.groupName}</h4>
                   <span style={{ fontSize: '0.8rem', color: '#7e22ce', fontWeight: 'bold' }}>
-                    {item.displayDate ? new Date(item.displayDate).toLocaleDateString('pt-BR') : ''} às {item.displayTime}
+                    {item.displayDate ? new Date(item.displayDate + 'T00:00:00').toLocaleDateString('pt-BR') : ''} às {item.displayTime}
                   </span>
                 </div>
-                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.9rem' }}>Local: {item.displayLocation}</p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                  <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.9rem' }}>Local: {item.displayLocation}</p>
+                  
+                  {item.isDateConfirmed && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.open(generateGoogleCalendarUrl(item), '_blank');
+                      }}
+                      style={{ 
+                        background: 'transparent', 
+                        border: '1px solid #34d399', 
+                        color: '#34d399', 
+                        padding: '4px 8px', 
+                        borderRadius: '6px', 
+                        fontSize: '0.8rem',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      + Agenda
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
