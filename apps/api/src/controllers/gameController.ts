@@ -3,16 +3,25 @@ import axios from 'axios';
 import { XMLParser } from 'fast-xml-parser';
 
 export const searchGames = async (req: Request, res: Response) => {
-  const { query, source, gameType = 'base' } = req.query;
+  const { query, source, gameType = 'base', baseGameId } = req.query;
 
-  if (!query || typeof query !== 'string') {
-    return res.status(400).json({ error: 'Parâmetro query é obrigatório.' });
+  if (!query && !baseGameId) {
+    return res.status(400).json({ error: 'Parâmetro query ou baseGameId é obrigatório.' });
   }
 
   try {
     if (source === 'bgg') {
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
       
+
+      if (!query && baseGameId) {
+        // Se a query está vazia, o BGG /search falha. 
+        // Para BGG, precisaríamos usar o endpoint /thing para pegar os links de expansão, 
+        // mas para simplificar, vamos retornar vazio se não houver query de texto, 
+        // pois a busca do BGG por string vazia não é suportada diretamente via /search.
+        return res.json({ games: [] });
+      }
+
       const bggType = gameType === 'expansion' ? 'boardgameexpansion' : 'boardgame';
       const searchRes = await axios.get(`https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(query as string)}&type=${bggType}`);
       const searchData = parser.parse(searchRes.data);
@@ -34,7 +43,12 @@ export const searchGames = async (req: Request, res: Response) => {
     } else {
       const token = process.env.LUDOPEDIA_ACCESS_TOKEN;
       const ludopediaTipo = gameType === 'expansion' ? 'e' : 'b';
-      const response = await axios.get(`https://ludopedia.com.br/api/v1/jogos?search=${encodeURIComponent(query as string)}&tp_jogo=${ludopediaTipo}`, {
+      
+      let url = `https://ludopedia.com.br/api/v1/jogos?tp_jogo=${ludopediaTipo}`;
+      if (query) url += `&search=${encodeURIComponent(query as string)}`;
+      if (baseGameId) url += `&id_jogo_base=${baseGameId}`;
+
+      const response = await axios.get(url, {
         headers: {
           Authorization: `Bearer ${token}`
         }

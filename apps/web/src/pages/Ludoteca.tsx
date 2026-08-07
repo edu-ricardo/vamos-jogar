@@ -101,12 +101,12 @@ export const Ludoteca = () => {
 
   const handleExpSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!expSearchQuery.trim() || !user) return;
+    if (!user || !editingGame) return;
     setExpSearchLoading(true);
     try {
       const token = await user.getIdToken();
       // Utiliza a fonte atual (ludopedia/bgg) e 'expansion'
-      const results = await ludotecaService.searchExternalGames(expSearchQuery, source, token, 'expansion');
+      const results = await ludotecaService.searchExternalGames(expSearchQuery, source, token, 'expansion', editingGame.sourceId);
       setExpSearchResults(results);
     } catch (err: any) {
       toast.error('Erro ao pesquisar expansão');
@@ -365,7 +365,7 @@ export const Ludoteca = () => {
               <form onSubmit={handleExpSearch} style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <input 
                   type="text" 
-                  placeholder="Nome da expansão..." 
+                  placeholder="Nome da expansão (deixe em branco para ver todas)..." 
                   value={expSearchQuery}
                   onChange={(e) => setExpSearchQuery(e.target.value)}
                   style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #444', background: 'rgba(0,0,0,0.2)', color: '#fff' }}

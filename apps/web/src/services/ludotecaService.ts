@@ -23,10 +23,12 @@ export const ludotecaService = {
     }
   },
 
-  searchExternalGames: async (query: string, source: 'ludopedia' | 'bgg', idToken: string, gameType: 'base' | 'expansion' = 'base'): Promise<Game[]> => {
+  searchExternalGames: async (query: string, source: 'ludopedia' | 'bgg', idToken: string, gameType: 'base' | 'expansion' = 'base', baseGameId?: string): Promise<Game[]> => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const res = await fetch(`${API_URL}/api/games/search?query=${encodeURIComponent(query)}&source=${source}&gameType=${gameType}`, {
+      let url = `${API_URL}/api/games/search?query=${encodeURIComponent(query)}&source=${source}&gameType=${gameType}`;
+      if (baseGameId) url += `&baseGameId=${encodeURIComponent(baseGameId)}`;
+      const res = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${idToken}`
         }
