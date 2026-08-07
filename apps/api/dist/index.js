@@ -20,7 +20,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/games', games_1.default);
 app.use('/api/groups', groups_1.default);
 app.use('/api/cron', cron_1.default);
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
 });

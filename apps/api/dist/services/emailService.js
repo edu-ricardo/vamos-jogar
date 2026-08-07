@@ -17,7 +17,7 @@ exports.emailService = {
             Não deixe para a última hora, senão a mesa fica sem os seus jogos preferidos ou a data fecha sem você!
           </p>
           <div style="text-align: center; margin-top: 30px;">
-            <a href="http://localhost:5177" style="background: #7e22ce; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5177'}" style="background: #7e22ce; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
               Ir para Votação
             </a>
           </div>

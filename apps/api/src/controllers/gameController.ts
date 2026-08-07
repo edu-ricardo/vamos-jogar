@@ -3,7 +3,7 @@ import axios from 'axios';
 import { XMLParser } from 'fast-xml-parser';
 
 export const searchGames = async (req: Request, res: Response) => {
-  const { query, source } = req.query;
+  const { query, source, gameType = 'base' } = req.query;
 
   if (!query || typeof query !== 'string') {
     return res.status(400).json({ error: 'Parâmetro query é obrigatório.' });
@@ -13,7 +13,8 @@ export const searchGames = async (req: Request, res: Response) => {
     if (source === 'bgg') {
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
       
-      const searchRes = await axios.get(`https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(query as string)}&type=boardgame`);
+      const bggType = gameType === 'expansion' ? 'boardgameexpansion' : 'boardgame';
+      const searchRes = await axios.get(`https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(query as string)}&type=${bggType}`);
       const searchData = parser.parse(searchRes.data);
       
       let items = searchData.items?.item || [];
@@ -32,7 +33,8 @@ export const searchGames = async (req: Request, res: Response) => {
       return res.json({ games });
     } else {
       const token = process.env.LUDOPEDIA_ACCESS_TOKEN;
-      const response = await axios.get(`https://ludopedia.com.br/api/v1/jogos?search=${encodeURIComponent(query as string)}`, {
+      const ludopediaTipo = gameType === 'expansion' ? 'e' : 'j';
+      const response = await axios.get(`https://ludopedia.com.br/api/v1/jogos?search=${encodeURIComponent(query as string)}&tipo=${ludopediaTipo}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
