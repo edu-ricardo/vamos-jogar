@@ -1,4 +1,4 @@
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, getDocs, setDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export interface Group {
@@ -19,6 +19,16 @@ export const groupService = {
       })) as Group[];
     } catch (err) {
       console.error("Erro ao buscar grupos no Firestore:", err);
+      throw err;
+    }
+  },
+
+  updateMemberName: async (groupId: string, userId: string, newName: string): Promise<void> => {
+    try {
+      const memberRef = doc(db, 'groups', groupId, 'members', userId);
+      await setDoc(memberRef, { name: newName }, { merge: true });
+    } catch (err) {
+      console.error("Erro ao atualizar nome do membro no grupo:", err);
       throw err;
     }
   },

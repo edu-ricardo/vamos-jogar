@@ -7,6 +7,9 @@ import { JoinGroup } from './pages/JoinGroup';
 import { Ludoteca } from './pages/Ludoteca';
 import { GroupDetails } from './pages/GroupDetails';
 import { EventDetails } from './pages/EventDetails';
+import { Grupos } from './pages/Grupos';
+import { Conta } from './pages/Conta';
+import { Layout } from './components/Layout';
 import { Toaster } from 'react-hot-toast';
 import './styles/global.scss';
 
@@ -41,7 +44,9 @@ const AppRoutes = () => {
         path="/join/:token" 
         element={
           <ProtectedRoute>
-            <JoinGroup />
+            <Layout>
+              <JoinGroup />
+            </Layout>
           </ProtectedRoute>
         } 
       />
@@ -49,7 +54,29 @@ const AppRoutes = () => {
         path="/ludoteca" 
         element={
           <ProtectedRoute>
-            <Ludoteca />
+            <Layout>
+              <Ludoteca />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/grupos" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Grupos />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/conta" 
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Conta />
+            </Layout>
           </ProtectedRoute>
         } 
       />
@@ -57,7 +84,9 @@ const AppRoutes = () => {
         path="/" 
         element={
           <ProtectedRoute>
-            <Dashboard />
+            <Layout>
+              <Dashboard />
+            </Layout>
           </ProtectedRoute>
         } 
       />
@@ -65,7 +94,9 @@ const AppRoutes = () => {
         path="/group/:id" 
         element={
           <ProtectedRoute>
-            <GroupDetails />
+            <Layout>
+              <GroupDetails />
+            </Layout>
           </ProtectedRoute>
         } 
       />
@@ -73,7 +104,9 @@ const AppRoutes = () => {
         path="/event/:groupId/:eventId" 
         element={
           <ProtectedRoute>
-            <EventDetails />
+            <Layout>
+              <EventDetails />
+            </Layout>
           </ProtectedRoute>
         } 
       />

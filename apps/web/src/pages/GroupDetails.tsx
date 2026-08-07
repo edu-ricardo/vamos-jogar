@@ -98,17 +98,25 @@ export const GroupDetails = () => {
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto' }}>
-      <button onClick={() => navigate('/')} style={{ background: 'transparent', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer', marginBottom: '20px' }}>
-        &larr; Voltar ao Dashboard
+    <div style={{ padding: '20px 0' }}>
+      <button onClick={() => navigate('/grupos')} style={{ background: 'transparent', color: '#a1a1aa', border: 'none', cursor: 'pointer', marginBottom: '20px', padding: 0 }}>
+        &larr; Voltar a Grupos
       </button>
 
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <h1>Eventos do Grupo</h1>
-        <button onClick={() => setShowModal(true)} className="btn-primary">
-          + Criar Evento
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h1 style={{ margin: 0, fontSize: '1.5rem' }}>Detalhes do Grupo</h1>
+        <button style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #71717a', borderRadius: '6px', color: '#fff', cursor: 'pointer', fontSize: '0.8rem' }}>
+          ver membros
         </button>
-      </header>
+      </div>
+
+      <button 
+        onClick={() => setShowModal(true)} 
+        className="btn-primary"
+        style={{ width: '100%', padding: '15px', fontSize: '1.1rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px', marginBottom: '30px' }}
+      >
+        + Criar Evento
+      </button>
 
       <section>
         {loading ? <p>Carregando eventos...</p> : events.length === 0 ? (

@@ -174,7 +174,7 @@ export const Ludoteca = () => {
   };
 
   return (
-    <div style={{ padding: '40px', maxWidth: '1000px', margin: '0 auto', position: 'relative' }}>
+    <div style={{ position: 'relative' }}>
       <h1>Sua Ludoteca</h1>
       <p style={{ color: '#a1a1aa', marginBottom: '30px' }}>Pesquise e adicione jogos que você possui à sua coleção para levá-los aos grupos de jogatina.</p>
 

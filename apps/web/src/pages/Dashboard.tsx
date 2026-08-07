@@ -1,97 +1,121 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { groupService, type Group } from '../services/groupService';
-import toast from 'react-hot-toast';
+import { groupService } from '../services/groupService';
+import { eventService, type Event } from '../services/eventService';
 
 export const Dashboard = () => {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [newGroupName, setNewGroupName] = useState('');
-  const [loading, setLoading] = useState(true);
-
-  const loadGroups = async () => {
-    if (!user) return;
-    try {
-      const fetchedGroups = await groupService.fetchUserGroups(user.uid);
-      setGroups(fetchedGroups);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [upcomingEvents, setUpcomingEvents] = useState<{event: Event, groupName: string, groupId: string, displayDate: string, displayTime: string, displayLocation: string}[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
 
   useEffect(() => {
-    loadGroups();
+    const loadUpcomingEvents = async () => {
+      if (!user) return;
+      try {
+        const groups = await groupService.fetchUserGroups(user.uid);
+        let allFutureEvents: {event: Event, groupName: string, groupId: string, displayDate: string, displayTime: string, displayLocation: string}[] = [];
+        
+        const now = new Date();
+        now.setHours(0, 0, 0, 0); // Considerar eventos a partir de hoje
+
+        for (const group of groups) {
+          const events = await eventService.fetchGroupEvents(group.id);
+          const futureEvents = events.filter((e: Event) => {
+            const dateStr = e.finalDateId 
+              ? e.dateOptions.find(d => d.id === e.finalDateId)?.date 
+              : e.dateOptions[0]?.date;
+            
+            if (!dateStr) return false;
+            
+            const eventDate = new Date(dateStr);
+            return eventDate >= now;
+          }).map((e: Event) => {
+            const dateObj = e.finalDateId 
+              ? e.dateOptions.find(d => d.id === e.finalDateId)
+              : e.dateOptions[0];
+            const locObj = e.finalLocationId 
+              ? e.locationOptions.find(l => l.id === e.finalLocationId)
+              : e.locationOptions[0];
+            
+            return {
+              event: e,
+              groupName: group.name,
+              groupId: group.id,
+              displayDate: dateObj?.date || '',
+              displayTime: dateObj?.startTime || '',
+              displayLocation: locObj?.name || 'Local a definir'
+            };
+          });
+          
+          allFutureEvents = [...allFutureEvents, ...futureEvents];
+        }
+
+        // Ordenar do mais próximo pro mais distante
+        allFutureEvents.sort((a, b) => new Date(a.displayDate).getTime() - new Date(b.displayDate).getTime());
+        
+        setUpcomingEvents(allFutureEvents);
+      } catch (err) {
+        console.error("Erro ao carregar eventos globais:", err);
+      } finally {
+        setLoadingEvents(false);
+      }
+    };
+
+    loadUpcomingEvents();
   }, [user]);
 
-  const handleCreateGroup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newGroupName.trim() || !user) return;
-
-    try {
-      await groupService.createGroup(user.uid, newGroupName);
-      setNewGroupName('');
-      toast.success('Grupo criado com sucesso!');
-      loadGroups(); // Refresh
-    } catch (err) {
-      toast.error("Erro ao criar grupo");
-    }
-  };
-
-  const copyInviteLink = (token: string) => {
-    const link = `${window.location.origin}/join/${token}`;
-    navigator.clipboard.writeText(link);
-    toast.success('Link de convite copiado!');
-  };
-
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-        <h1>Seus Grupos de Jogatina</h1>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-          <button onClick={() => navigate('/ludoteca')} className="btn-primary">Minha Ludoteca</button>
-          <button onClick={logout} className="btn-danger">Sair</button>
-        </div>
-      </header>
+    <div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '40px' }}>
+        <button 
+          onClick={() => navigate('/ludoteca')} 
+          className="btn-primary" 
+          style={{ width: '100%', padding: '20px', fontSize: '1.2rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px' }}
+        >
+          Ludoteca
+        </button>
+        <button 
+          onClick={() => navigate('/grupos')} 
+          className="btn-primary" 
+          style={{ width: '100%', padding: '20px', fontSize: '1.2rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px' }}
+        >
+          Grupos
+        </button>
+      </div>
 
-      <section style={{ marginBottom: '40px', background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '12px' }}>
-        <h2>Criar novo grupo</h2>
-        <form onSubmit={handleCreateGroup} style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-          <input 
-            type="text" 
-            placeholder="Nome do grupo..." 
-            value={newGroupName}
-            onChange={(e) => setNewGroupName(e.target.value)}
-            style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #444', background: 'transparent', color: '#fff' }}
-          />
-          <button type="submit" className="btn-primary" style={{ marginTop: 0 }}>Criar</button>
-        </form>
-      </section>
-
-      <section>
-        {loading ? <p>Carregando grupos...</p> : groups.length === 0 ? (
-          <p style={{ color: '#a1a1aa' }}>Você ainda não participa de nenhum grupo.</p>
+      <section style={{ border: '1px solid #333', borderRadius: '12px', padding: '20px', background: 'rgba(255,255,255,0.02)' }}>
+        <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '15px' }}>Próximos Eventos</h2>
+        
+        {loadingEvents ? (
+          <p style={{ color: '#a1a1aa', textAlign: 'center' }}>Buscando eventos...</p>
+        ) : upcomingEvents.length === 0 ? (
+          <p style={{ color: '#a1a1aa', textAlign: 'center' }}>Nenhum evento agendado para o futuro.</p>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            {groups.map(g => (
-              <div key={g.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px', background: 'rgba(20,20,22,0.8)', border: '1px solid #333', borderRadius: '12px' }}>
-                <div>
-                  <h3 style={{ margin: 0 }}>{g.name}</h3>
-                  <small style={{ color: '#a1a1aa' }}>{g.adminId === user?.uid ? 'Você é o admin' : 'Membro'}</small>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {upcomingEvents.map(item => (
+              <div 
+                key={item.event.id} 
+                onClick={() => navigate(`/event/${item.groupId}/${item.event.id}`)}
+                style={{ 
+                  padding: '15px', 
+                  border: '1px solid #444', 
+                  borderRadius: '8px', 
+                  cursor: 'pointer',
+                  background: 'rgba(0,0,0,0.3)',
+                  transition: 'background 0.2s'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.3)'}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                  <h4 style={{ margin: 0 }}>{item.groupName}</h4>
+                  <span style={{ fontSize: '0.8rem', color: '#7e22ce', fontWeight: 'bold' }}>
+                    {item.displayDate ? new Date(item.displayDate).toLocaleDateString('pt-BR') : ''} às {item.displayTime}
+                  </span>
                 </div>
-                <div>
-                  {g.adminId === user?.uid && (
-                    <button onClick={() => copyInviteLink(g.inviteToken)} className="btn-primary" style={{ padding: '8px 16px', background: 'var(--accent-hover)' }}>
-                      Copiar Link Convite
-                    </button>
-                  )}
-                  <button onClick={() => navigate(`/group/${g.id}`)} className="btn-primary" style={{ padding: '8px 16px', marginLeft: '10px' }}>
-                    Entrar
-                  </button>
-                </div>
+                <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.9rem' }}>Local: {item.displayLocation}</p>
               </div>
             ))}
           </div>
