@@ -75,16 +75,19 @@ export const groupService = {
     }
   },
 
-  createGroup: async (uid: string, groupName: string): Promise<void> => {
+  createGroup: async (uid: string, groupName: string, userName?: string): Promise<void> => {
     try {
       const token = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
-      await addDoc(collection(db, 'groups'), {
+      const groupRef = await addDoc(collection(db, 'groups'), {
         name: groupName,
         adminId: uid,
         members: [uid],
         inviteToken: token,
         createdAt: serverTimestamp()
       });
+      
+      const memberRef = doc(db, 'groups', groupRef.id, 'members', uid);
+      await setDoc(memberRef, { name: userName || 'Admin' });
     } catch (err) {
       console.error("Erro ao criar grupo no Firestore:", err);
       throw err;

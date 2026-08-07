@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { db } from '../lib/firebase-admin';
+import { db, auth } from '../lib/firebase-admin';
 
 export const joinGroup = async (req: Request, res: Response) => {
   const { inviteToken } = req.body;
@@ -27,6 +27,13 @@ export const joinGroup = async (req: Request, res: Response) => {
     await groupDoc.ref.update({
       members: [...(groupData.members || []), uid]
     });
+
+    const userRecord = await auth.getUser(uid);
+    const userName = userRecord.displayName || 'Usuário ' + uid.substring(0, 4);
+
+    await groupDoc.ref.collection('members').doc(uid).set({
+      name: userName
+    }, { merge: true });
 
     return res.json({ success: true, groupId: groupDoc.id, groupName: groupData.name });
   } catch (error) {

@@ -32,7 +32,7 @@ export const Grupos = () => {
     if (!newGroupName.trim() || !user) return;
 
     try {
-      await groupService.createGroup(user.uid, newGroupName);
+      await groupService.createGroup(user.uid, newGroupName, user.displayName || undefined);
       setNewGroupName('');
       toast.success('Grupo criado com sucesso!');
       loadGroups(); // Refresh
