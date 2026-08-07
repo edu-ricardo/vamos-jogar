@@ -72,14 +72,14 @@ export const Dashboard = () => {
         <button 
           onClick={() => navigate('/ludoteca')} 
           className="btn-primary" 
-          style={{ width: '100%', padding: '20px', fontSize: '1.2rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px' }}
+          style={{ width: '100%', padding: '20px', fontSize: '1.2rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px', color: '#fff' }}
         >
           Ludoteca
         </button>
         <button 
           onClick={() => navigate('/grupos')} 
           className="btn-primary" 
-          style={{ width: '100%', padding: '20px', fontSize: '1.2rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px' }}
+          style={{ width: '100%', padding: '20px', fontSize: '1.2rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px', color: '#fff' }}
         >
           Grupos
         </button>

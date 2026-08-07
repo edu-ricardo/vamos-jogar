@@ -113,7 +113,7 @@ export const GroupDetails = () => {
       <button 
         onClick={() => setShowModal(true)} 
         className="btn-primary"
-        style={{ width: '100%', padding: '15px', fontSize: '1.1rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px', marginBottom: '30px' }}
+        style={{ width: '100%', padding: '15px', fontSize: '1.1rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px', marginBottom: '30px', color: '#fff' }}
       >
         + Criar Evento
       </button>

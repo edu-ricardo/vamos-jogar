@@ -61,7 +61,7 @@ export const Grupos = () => {
             onChange={(e) => setNewGroupName(e.target.value)}
             style={{ width: '100%', padding: '15px', borderRadius: '8px', border: '1px solid #444', background: 'transparent', color: '#fff' }}
           />
-          <button type="submit" className="btn-primary" style={{ width: '100%', padding: '15px', fontSize: '1rem', background: 'transparent', border: '1px solid #7e22ce' }}>
+          <button type="submit" className="btn-primary" style={{ width: '100%', padding: '15px', fontSize: '1rem', background: 'transparent', border: '1px solid #7e22ce', color: '#fff' }}>
             Criar Grupo
           </button>
         </form>
