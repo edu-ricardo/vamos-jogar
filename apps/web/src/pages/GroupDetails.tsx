@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { eventService, type Event, type EventDateOption, type EventLocationOption, type FavoriteLocation } from '../services/eventService';
+import { groupService, type Group } from '../services/groupService';
 import toast from 'react-hot-toast';
 
 export const GroupDetails = () => {
@@ -25,6 +26,25 @@ export const GroupDetails = () => {
   ]);
 
   const [favorites, setFavorites] = useState<FavoriteLocation[]>([]);
+  
+  // Member Modal states
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [groupDetails, setGroupDetails] = useState<Group | null>(null);
+  const [members, setMembers] = useState<{id: string, name: string}[]>([]);
+
+  const loadGroupData = async () => {
+    if (!id) return;
+    try {
+      const [details, membersList] = await Promise.all([
+        groupService.fetchGroupDetails(id),
+        groupService.fetchGroupMembers(id)
+      ]);
+      setGroupDetails(details);
+      setMembers(membersList);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const loadEvents = async () => {
     if (!id) return;
@@ -47,7 +67,19 @@ export const GroupDetails = () => {
   useEffect(() => {
     loadEvents();
     loadFavorites();
+    loadGroupData();
   }, [id, user]);
+
+  const handleRemoveMember = async (memberId: string) => {
+    if (!id || !user) return;
+    try {
+      await groupService.removeMember(id, memberId);
+      toast.success('Membro removido.');
+      loadGroupData();
+    } catch (err) {
+      toast.error('Erro ao remover membro.');
+    }
+  };
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,7 +137,7 @@ export const GroupDetails = () => {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem' }}>Detalhes do Grupo</h1>
-        <button style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #71717a', borderRadius: '6px', color: '#fff', cursor: 'pointer', fontSize: '0.8rem' }}>
+        <button onClick={() => setShowMembersModal(true)} style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #71717a', borderRadius: '6px', color: '#fff', cursor: 'pointer', fontSize: '0.8rem' }}>
           ver membros
         </button>
       </div>
@@ -213,6 +245,34 @@ export const GroupDetails = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showMembersModal && groupDetails && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: '#1c1c1f', padding: '30px', borderRadius: '12px', width: '100%', maxWidth: '500px', border: '1px solid #444', maxHeight: '90vh', overflowY: 'auto' }}>
+            <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Membros do Grupo</h2>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+              {members.map(m => (
+                <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                  <span>{m.name} {m.id === groupDetails.adminId ? <small style={{ color: '#a1a1aa' }}>(Admin)</small> : ''}</span>
+                  {user?.uid === groupDetails.adminId && m.id !== user.uid && (
+                    <button 
+                      onClick={() => handleRemoveMember(m.id)}
+                      style={{ padding: '6px 12px', background: 'transparent', border: '1px solid #ef4444', color: '#ef4444', borderRadius: '6px', cursor: 'pointer' }}
+                    >
+                      Remover
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button onClick={() => setShowMembersModal(false)} className="btn-primary" style={{ width: '100%', padding: '12px' }}>
+              Fechar
+            </button>
           </div>
         </div>
       )}

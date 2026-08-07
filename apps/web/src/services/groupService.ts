@@ -1,4 +1,4 @@
-import { collection, doc, addDoc, getDocs, setDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, addDoc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export interface Group {
@@ -29,6 +29,48 @@ export const groupService = {
       await setDoc(memberRef, { name: newName }, { merge: true });
     } catch (err) {
       console.error("Erro ao atualizar nome do membro no grupo:", err);
+      throw err;
+    }
+  },
+
+  fetchGroupDetails: async (groupId: string): Promise<Group | null> => {
+    try {
+      const docRef = doc(db, 'groups', groupId);
+      const snapshot = await getDoc(docRef);
+      if (!snapshot.exists()) return null;
+      return { id: snapshot.id, ...snapshot.data() } as Group;
+    } catch (err) {
+      console.error("Erro ao buscar detalhes do grupo:", err);
+      throw err;
+    }
+  },
+
+  fetchGroupMembers: async (groupId: string): Promise<{id: string, name: string}[]> => {
+    try {
+      const snapshot = await getDocs(collection(db, 'groups', groupId, 'members'));
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name || 'Usuário'
+      }));
+    } catch (err) {
+      console.error("Erro ao buscar membros do grupo:", err);
+      throw err;
+    }
+  },
+
+  removeMember: async (groupId: string, userId: string): Promise<void> => {
+    try {
+      await deleteDoc(doc(db, 'groups', groupId, 'members', userId));
+      
+      const groupRef = doc(db, 'groups', groupId);
+      const groupSnap = await getDoc(groupRef);
+      if (groupSnap.exists()) {
+        const data = groupSnap.data();
+        const newMembers = (data.members || []).filter((id: string) => id !== userId);
+        await updateDoc(groupRef, { members: newMembers });
+      }
+    } catch (err) {
+      console.error("Erro ao remover membro:", err);
       throw err;
     }
   },
