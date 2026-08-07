@@ -276,12 +276,12 @@ export const EventDetails = () => {
   const finalLocation = event.locationOptions.find(l => l.id === event.finalLocationId);
 
   return (
-    <div style={{ padding: '40px', maxWidth: '800px', margin: '0 auto' }}>
-      <button onClick={() => navigate(`/group/${groupId}`)} style={{ background: 'transparent', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer', marginBottom: '20px' }}>
+    <div style={{ padding: '20px 15px', maxWidth: '800px', margin: '0 auto' }}>
+      <button onClick={() => navigate(`/group/${groupId}`)} style={{ background: 'transparent', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer', marginBottom: '20px', padding: 0 }}>
         &larr; Voltar ao Grupo
       </button>
 
-      <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <header style={{ marginBottom: '30px', display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ marginBottom: '10px' }}>{event.title}</h1>
           <span style={{ display: 'inline-block', padding: '5px 10px', background: 'var(--accent-primary-transparent)', color: 'var(--accent-primary)', borderRadius: 'var(--radius-full)', fontSize: '0.8rem', fontWeight: 'bold' }}>
@@ -297,20 +297,20 @@ export const EventDetails = () => {
         )}
       </header>
 
-      <div style={{ marginBottom: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+      <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
         {user && event.creatorId === user.uid && event.status !== 'CONFIRMED' && (
-          <button onClick={handleForceReminders} className="btn-primary" style={{ background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '8px 16px', fontSize: '0.9rem' }}>
+          <button onClick={handleForceReminders} className="btn-primary" style={{ flex: '1 1 auto', background: 'var(--bg-secondary)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', padding: '12px 16px', fontSize: '0.9rem' }}>
             🔔 Cobrar Atrasados
           </button>
         )}
-        <button onClick={() => setShowResultsModal(true)} className="btn-primary" style={{ background: 'var(--accent-primary-transparent)', color: 'var(--accent-primary)', border: '1px solid var(--accent-primary)', padding: '8px 16px', fontSize: '0.9rem' }}>
+        <button onClick={() => setShowResultsModal(true)} className="btn-primary" style={{ flex: '1 1 auto', background: 'var(--accent-primary-transparent)', color: 'var(--accent-primary)', border: '1px solid var(--accent-primary)', padding: '12px 16px', fontSize: '0.9rem' }}>
           📊 Ver Parciais
         </button>
       </div>
 
       {/* TELA DE VOTING DATE */}
       {event.status === 'VOTING_DATE' && (
-        <section style={{ background: 'var(--bg-tertiary)', padding: '30px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+        <section style={{ background: 'var(--bg-tertiary)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
           <h2 style={{ marginBottom: '20px' }}>Votação de Data e Local</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>Por favor, indique a sua preferência para organizarmos essa jogatina.</p>
 
@@ -381,7 +381,7 @@ export const EventDetails = () => {
             </div>
           )}
 
-          <div style={{ background: 'var(--bg-tertiary)', padding: '30px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+          <div style={{ background: 'var(--bg-tertiary)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <h2>O que vamos jogar?</h2>
               <button onClick={openSuggestGames} className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.9rem' }}>
@@ -428,7 +428,7 @@ export const EventDetails = () => {
       {/* Modal de Edição omitido pra limpar espaço, mantendo a logica anterior */}
       {showEditModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', padding: '30px' }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', padding: '20px' }}>
             <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Editar Evento</h2>
             <form onSubmit={handleUpdateEvent}>
               <div style={{ marginBottom: '20px' }}>
@@ -489,7 +489,7 @@ export const EventDetails = () => {
       {/* Modal Sugerir Jogos */}
       {showSuggestGamesModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', padding: '30px' }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', padding: '20px' }}>
             <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Sugerir Jogos da Minha Ludoteca</h2>
             
             {loadingMyGames ? (
@@ -534,7 +534,7 @@ export const EventDetails = () => {
       {/* Modal Resultados Parciais */}
       {showResultsModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', padding: '30px' }}>
+          <div style={{ background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', padding: '20px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
               <h2 style={{ marginTop: 0, margin: 0 }}>📊 Parciais da Votação</h2>
               <button onClick={() => setShowResultsModal(false)} style={{ background: 'transparent', color: 'var(--text-secondary)', border: 'none', fontSize: '1.2rem', cursor: 'pointer' }}>✖</button>
