@@ -33,8 +33,8 @@ export const searchGames = async (req: Request, res: Response) => {
       return res.json({ games });
     } else {
       const token = process.env.LUDOPEDIA_ACCESS_TOKEN;
-      const ludopediaTipo = gameType === 'expansion' ? 'e' : 'j';
-      const response = await axios.get(`https://ludopedia.com.br/api/v1/jogos?search=${encodeURIComponent(query as string)}&tipo=${ludopediaTipo}`, {
+      const ludopediaTipo = gameType === 'expansion' ? 'e' : 'b';
+      const response = await axios.get(`https://ludopedia.com.br/api/v1/jogos?search=${encodeURIComponent(query as string)}&tp_jogo=${ludopediaTipo}`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
