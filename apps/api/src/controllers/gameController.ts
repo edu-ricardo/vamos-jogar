@@ -97,7 +97,9 @@ export const getGameDetails = async (req: Request, res: Response) => {
         name: Array.isArray(item.name) ? item.name[0]?.value : item.name?.value,
         image: item.image || item.thumbnail || '',
         description: item.description || '',
-        playtime: item.playingtime?.value || 'N/A'
+        playtime: item.playingtime?.value || 'N/A',
+        minPlayers: item.minplayers?.value || null,
+        maxPlayers: item.maxplayers?.value || null
       };
 
       return res.json({ game: gameDetails });
@@ -119,7 +121,9 @@ export const getGameDetails = async (req: Request, res: Response) => {
         name: jogo.nm_jogo,
         image: jogo.link_imagem || jogo.thumb || '',
         description: jogo.ds_jogo || '',
-        playtime: jogo.vl_tempo_jogo || 'N/A'
+        playtime: jogo.vl_tempo_jogo || 'N/A',
+        minPlayers: jogo.qt_jogadores_min || null,
+        maxPlayers: jogo.qt_jogadores_max || null
       };
 
       return res.json({ game: gameDetails });

@@ -8,6 +8,8 @@ export interface Game {
   image: string;
   description?: string;
   playtime?: string;
+  minPlayers?: number | string;
+  maxPlayers?: number | string;
   observation?: string;
   expansions?: Game[];
 }

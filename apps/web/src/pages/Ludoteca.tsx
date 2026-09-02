@@ -18,6 +18,8 @@ export const Ludoteca = () => {
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [observation, setObservation] = useState('');
   const [playtime, setPlaytime] = useState('');
+  const [minPlayers, setMinPlayers] = useState('');
+  const [maxPlayers, setMaxPlayers] = useState('');
 
   // Estados de Expansão
   const [expSearchQuery, setExpSearchQuery] = useState('');
@@ -66,6 +68,8 @@ export const Ludoteca = () => {
       const details = await ludotecaService.getGameDetails(gameBasic.id, source, token);
       setSelectedGame({ ...gameBasic, ...details });
       setPlaytime(details.playtime || '');
+      setMinPlayers(details.minPlayers ? String(details.minPlayers) : '');
+      setMaxPlayers(details.maxPlayers ? String(details.maxPlayers) : '');
     } catch (err) {
       toast.error('Erro ao carregar detalhes do jogo.');
       setSelectedGame(null);
@@ -80,6 +84,8 @@ export const Ludoteca = () => {
       const gameToSave = {
         ...selectedGame,
         playtime: playtime,
+        minPlayers: minPlayers ? Number(minPlayers) : undefined,
+        maxPlayers: maxPlayers ? Number(maxPlayers) : undefined,
         observation: observation
       };
       await ludotecaService.addGameToCollection(user.uid, gameToSave);
@@ -95,6 +101,8 @@ export const Ludoteca = () => {
     setEditingGame(game);
     setObservation(game.observation || '');
     setPlaytime(game.playtime || '');
+    setMinPlayers(game.minPlayers ? String(game.minPlayers) : '');
+    setMaxPlayers(game.maxPlayers ? String(game.maxPlayers) : '');
     setExpSearchResults([]);
     setExpSearchQuery('');
   };
@@ -152,6 +160,8 @@ export const Ludoteca = () => {
       const gameToSave = {
         ...editingGame,
         playtime: playtime,
+        minPlayers: minPlayers ? Number(minPlayers) : undefined,
+        maxPlayers: maxPlayers ? Number(maxPlayers) : undefined,
         observation: observation
       };
       await ludotecaService.addGameToCollection(user.uid, gameToSave);
@@ -231,6 +241,11 @@ export const Ludoteca = () => {
                 <div style={{ padding: '15px' }}>
                   <h4 style={{ margin: '0 0 5px 0' }}>{game.name}</h4>
                   <small style={{ color: '#a1a1aa', display: 'block' }}>⏱ {game.playtime} min</small>
+                  {(game.minPlayers || game.maxPlayers) && (
+                    <small style={{ color: '#a1a1aa', display: 'block', marginTop: '2px' }}>
+                      👥 {game.minPlayers || '?'}{game.maxPlayers && game.maxPlayers !== game.minPlayers ? ` - ${game.maxPlayers}` : ''} jogadores
+                    </small>
+                  )}
                   {game.observation && <small style={{ color: '#fbbf24', display: 'block', marginTop: '4px' }}>📝 {game.observation}</small>}
                   {game.expansions && game.expansions.length > 0 && (
                     <small style={{ color: '#34d399', display: 'block', marginTop: '4px' }}>🧩 {game.expansions.length} expansão(ões)</small>
@@ -281,6 +296,27 @@ export const Ludoteca = () => {
                   />
                 </div>
 
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#a1a1aa' }}>Mín. Jogadores</label>
+                    <input 
+                      type="number" 
+                      value={minPlayers} 
+                      onChange={(e) => setMinPlayers(e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #444', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#a1a1aa' }}>Máx. Jogadores</label>
+                    <input 
+                      type="number" 
+                      value={maxPlayers} 
+                      onChange={(e) => setMaxPlayers(e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #444', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+                    />
+                  </div>
+                </div>
+
                 <div style={{ marginBottom: '25px' }}>
                   <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#a1a1aa' }}>Observações (ex: Falta um meeple, Edição KS)</label>
                   <input 
@@ -328,6 +364,27 @@ export const Ludoteca = () => {
                     onChange={(e) => setPlaytime(e.target.value)}
                     style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #444', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
                   />
+                </div>
+
+                <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#a1a1aa' }}>Mín. Jogadores</label>
+                    <input 
+                      type="number" 
+                      value={minPlayers} 
+                      onChange={(e) => setMinPlayers(e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #444', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#a1a1aa' }}>Máx. Jogadores</label>
+                    <input 
+                      type="number" 
+                      value={maxPlayers} 
+                      onChange={(e) => setMaxPlayers(e.target.value)}
+                      style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #444', background: 'rgba(0,0,0,0.2)', color: '#fff' }}
+                    />
+                  </div>
                 </div>
 
                 <div style={{ marginBottom: '25px' }}>

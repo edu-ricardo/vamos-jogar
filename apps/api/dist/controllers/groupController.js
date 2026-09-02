@@ -22,6 +22,11 @@ const joinGroup = async (req, res) => {
         await groupDoc.ref.update({
             members: [...(groupData.members || []), uid]
         });
+        const userRecord = await firebase_admin_1.auth.getUser(uid);
+        const userName = userRecord.displayName || 'Usuário ' + uid.substring(0, 4);
+        await groupDoc.ref.collection('members').doc(uid).set({
+            name: userName
+        }, { merge: true });
         return res.json({ success: true, groupId: groupDoc.id, groupName: groupData.name });
     }
     catch (error) {
