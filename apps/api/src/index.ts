@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import gameRoutes from './routes/games';
 import groupRoutes from './routes/groups';
 import cronRoutes from './routes/cron';
+import accountRoutes from './routes/account';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/games', gameRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/cron', cronRoutes);
+app.use('/api/account', accountRoutes);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 app.listen(PORT, '0.0.0.0', () => {

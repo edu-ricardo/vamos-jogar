@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { updateProfile, deleteUser } from 'firebase/auth';
-import { doc, deleteDoc } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { updateProfile } from 'firebase/auth';
 import { groupService } from '../services/groupService';
+import { accountService, AccountError } from '../services/accountService';
 import toast from 'react-hot-toast';
 
 export const Conta = () => {
@@ -39,13 +38,12 @@ export const Conta = () => {
   const handleDeleteAccount = async () => {
     if (!user) return;
     try {
-      await deleteDoc(doc(db, 'users', user.uid));
-      await deleteUser(user);
+      await accountService.deleteAccount(await user.getIdToken());
 
       toast.success('Conta excluída com sucesso.');
       logout();
     } catch (err: any) {
-      if (err.code === 'auth/requires-recent-login') {
+      if (err instanceof AccountError && err.code === 'requires-recent-login') {
         toast.error('Por favor, saia e faça login novamente antes de excluir a conta.');
       } else {
         toast.error('Erro ao excluir conta.');
