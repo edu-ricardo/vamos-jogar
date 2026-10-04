@@ -12,3 +12,6 @@ dist
 
 # Logs dos emuladores do Firebase
 *-debug.log
+
+# Backups de produção (dados pessoais)
+backups/

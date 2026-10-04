@@ -9,7 +9,7 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "start": "npm --workspace=api run start",
-    "test:rules": "firebase emulators:exec --only firestore --project demo-vamos-jogar \"vitest run --dir tests\""
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-vamos-jogar \"vitest run --dir tests\""
   },
   "workspaces": [
     "apps/*",
