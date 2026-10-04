@@ -1,6 +1,6 @@
 name: Imagens Docker
 
-# Publica ghcr.io/<dono>/vamos-jogar-api e -web ao criar uma tag vX.Y.Z (ou manualmente).
+# Publica ghcr.io/<dono>/vamos-jogar-api, -web e -pocketbase ao criar uma tag vX.Y.Z (ou manualmente).
 # Tags com sufixo (ex.: v1.0.0-homolog) geram só a imagem 1.0.0-homolog, sem mexer na latest.
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        app: [api, web]
+        app: [api, web, pocketbase]
     steps:
       - uses: actions/checkout@v4
 

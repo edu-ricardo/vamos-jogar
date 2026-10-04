@@ -16,13 +16,16 @@ ARG VITE_FIREBASE_MESSAGING_SENDER_ID
 ARG VITE_FIREBASE_APP_ID
 # Vazio: o app chama /api no mesmo endereço e o nginx repassa para a API
 ENV VITE_API_URL=""
+# firebase ou pocketbase; com pocketbase o app usa /pb no mesmo endereço
+ARG VITE_BACKEND=pocketbase
 
 COPY apps/web apps/web
 RUN npm run build --workspace=web
 
 FROM nginx:1.29-alpine
-# Destino da API (host:porta); o nginx gera o default.conf a partir do modelo ao iniciar
+# Destinos (host:porta) da API e do PocketBase; o nginx gera o default.conf ao iniciar
 ENV API_UPSTREAM=api:3001
+ENV PB_UPSTREAM=pocketbase:8090
 COPY apps/web/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --from=build /repo/apps/web/dist /usr/share/nginx/html
 EXPOSE 80

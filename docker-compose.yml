@@ -1,27 +1,43 @@
-# Teste local da stack em containers (mesma montagem do Umbrel, construindo as imagens daqui).
-# Uso: docker compose --env-file apps/web/.env up --build   →   http://localhost:3080
+# Teste local da stack em containers, na mesma montagem do Umbrel (nginx + API + PocketBase).
+# Uso: docker compose up --build   →   http://localhost:3080
+# Login Google opcional: GOOGLE_CLIENT_ID e GOOGLE_CLIENT_SECRET no ambiente.
 services:
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
-      args:
-        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY}
-        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN}
-        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID}
-        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET}
-        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID}
-        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID}
     ports:
       - '3080:80'
     depends_on:
       - api
+      - pocketbase
 
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
     env_file:
-      - apps/api/.env
+      - path: apps/api/.env
+        required: false
     environment:
+      PB_URL: http://pocketbase:8090
+      PB_SUPERUSER_EMAIL: &pb_admin_email admin@vamosjogar.local
+      PB_SUPERUSER_PASSWORD: &pb_admin_password senha-local-de-teste
       FRONTEND_URL: http://localhost:3080
+    depends_on:
+      - pocketbase
+
+  pocketbase:
+    build:
+      context: .
+      dockerfile: apps/pocketbase/Dockerfile
+    environment:
+      PB_SUPERUSER_EMAIL: *pb_admin_email
+      PB_SUPERUSER_PASSWORD: *pb_admin_password
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+    volumes:
+      - pb_data:/pb_data
+
+volumes:
+  pb_data:

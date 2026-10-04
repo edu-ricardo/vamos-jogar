@@ -18,6 +18,8 @@ COPY apps/web/package.json apps/web/
 COPY packages/ui/package.json packages/ui/
 RUN npm ci --workspace=api --include-workspace-root=false --omit=dev && npm cache clean --force
 COPY --from=build /repo/apps/api/dist apps/api/dist
+# Importação do backup do Firebase, rodada dentro do servidor (node dist-scripts/migrate/migrate.js)
+COPY --from=build /repo/apps/api/dist-scripts apps/api/dist-scripts
 WORKDIR /repo/apps/api
 USER node
 EXPOSE 3001

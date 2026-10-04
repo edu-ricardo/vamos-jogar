@@ -13,6 +13,7 @@ RUN apk add --no-cache ca-certificates unzip wget \
 
 # Esquema e regras de acesso versionados; aplicados automaticamente ao iniciar
 COPY apps/pocketbase/pb_migrations /pb/pb_migrations
+COPY apps/pocketbase/pb_hooks /pb/pb_hooks
 COPY --chmod=755 apps/pocketbase/entrypoint.sh /pb/entrypoint.sh
 
 EXPOSE 8090
