@@ -25,13 +25,7 @@ O projeto tem como objetivo servir para mim e para meus amigos como um HUB para 
 
 3. Permitir que os jogadores cadastrem sua biblioteca de jogos usando os dados da LudoAPI (https://ludopedia.com.br/api/documentacao.html) As principais informações que devemos trazer são as seguintes: Nome do Jogo, Descrição, Tempo da Partida e se tivermos uma imagem para mostrar do jogo. Se o jogo não for encontrado na API permitir o cadastro, podemos usar também a api do BGG (https://boardgamegeek.com/wiki/page/BGG_XML_API2) como fallback principalmente para caso de termos jogos internacionais não lançados no brasil e que possam não estar na outra API.
 
-Meus dados de acesso:
-
-    APP_ID: 65e3d835635c51cb
-
-    APP_KEY: ec06284deb2a4d1bd96130e97c372a0e
-
-    ACESS_TOKEN (Usuário): 732db3ef9bb75aadde381b00333cac46
+Dados de acesso: configurados via variáveis de ambiente em `apps/api/.env` (ver `apps/api/.env.example`).
 
 4. Ter um sistema de marcação de data para a "Jogatina" e votar na data e horario melhor para cada um. Deve permitir tabém escolhermos o lugar onde vamos com uma tela para voluntariar o local.
 

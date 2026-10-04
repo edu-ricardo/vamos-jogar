@@ -50,7 +50,8 @@ export const Dashboard = () => {
 
               if (!dateStr) return false;
 
-              const eventDate = new Date(dateStr);
+              // 'T00:00:00' força o fuso local; sem isso a data é lida em UTC e eventos de hoje somem
+              const eventDate = new Date(dateStr + 'T00:00:00');
               return eventDate >= now;
             })
             .map((e: Event) => {

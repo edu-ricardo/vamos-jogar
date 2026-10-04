@@ -115,20 +115,11 @@ export const eventService = {
     locationOptionId: string,
   ): Promise<void> => {
     try {
+      // Atualiza só o voto deste usuário para não sobrescrever votos simultâneos
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
-      const snapshot = await getDoc(docRef);
-      if (!snapshot.exists()) throw new Error('Evento não encontrado');
-
-      const data = snapshot.data();
-      const votesDate = data.votesDate || {};
-      const votesLocation = data.votesLocation || {};
-
-      votesDate[userId] = dateOptionId;
-      votesLocation[userId] = locationOptionId;
-
       await updateDoc(docRef, {
-        votesDate,
-        votesLocation,
+        [`votesDate.${userId}`]: dateOptionId,
+        [`votesLocation.${userId}`]: locationOptionId,
       });
     } catch (err) {
       console.error('Erro ao computar voto:', err);
@@ -243,15 +234,8 @@ export const eventService = {
   ): Promise<void> => {
     try {
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
-      const snapshot = await getDoc(docRef);
-      if (!snapshot.exists()) throw new Error('Evento não encontrado');
-
-      const data = snapshot.data();
-      const votesGames = data.votesGames || {};
-      votesGames[userId] = gameIds;
-
       await updateDoc(docRef, {
-        votesGames,
+        [`votesGames.${userId}`]: gameIds,
       });
     } catch (err) {
       console.error('Erro ao votar em jogos:', err);
@@ -262,12 +246,16 @@ export const eventService = {
   forceReminders: async (
     groupId: string,
     eventId: string,
+    idToken: string,
   ): Promise<{ success: boolean; message: string }> => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const response = await fetch(`${API_URL}/api/cron/force-event-reminders`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${idToken}`,
+        },
         body: JSON.stringify({ groupId, eventId }),
       });
       const data = await response.json();

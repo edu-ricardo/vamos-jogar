@@ -89,8 +89,7 @@ export const groupService = {
 
   createGroup: async (uid: string, groupName: string, userName?: string): Promise<void> => {
     try {
-      const token =
-        Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+      const token = crypto.randomUUID();
       const groupRef = await addDoc(collection(db, 'groups'), {
         name: groupName,
         adminId: uid,

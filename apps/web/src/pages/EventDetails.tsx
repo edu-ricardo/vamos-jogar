@@ -318,10 +318,10 @@ export const EventDetails = () => {
   };
 
   const handleForceReminders = async () => {
-    if (!groupId || !eventId) return;
+    if (!groupId || !eventId || !user) return;
     try {
       const toastId = toast.loading('Buscando quem está atrasado e enviando os corvos...');
-      const response = await eventService.forceReminders(groupId, eventId);
+      const response = await eventService.forceReminders(groupId, eventId, await user.getIdToken());
       toast.success(response.message || 'E-mails enviados!', { id: toastId });
     } catch (err: any) {
       toast.error(err.message || 'Erro ao enviar alertas');

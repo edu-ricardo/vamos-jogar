@@ -14,6 +14,12 @@ export interface Game {
   expansions?: Game[];
 }
 
+export type GameSource = 'ludopedia' | 'bgg';
+
+// A origem do jogo está no prefixo do id gerado pela API ('bgg-' ou 'ludo-')
+export const getGameSource = (gameId: string): GameSource =>
+  gameId.startsWith('bgg-') ? 'bgg' : 'ludopedia';
+
 export const ludotecaService = {
   fetchUserCollection: async (uid: string): Promise<Game[]> => {
     try {

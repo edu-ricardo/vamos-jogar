@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { ludotecaService, type Game } from '../services/ludotecaService';
+import { ludotecaService, getGameSource, type Game } from '../services/ludotecaService';
 import toast from 'react-hot-toast';
 
 export const Ludoteca = () => {
@@ -113,10 +113,10 @@ export const Ludoteca = () => {
     setExpSearchLoading(true);
     try {
       const token = await user.getIdToken();
-      // Utiliza a fonte atual (ludopedia/bgg) e 'expansion'
+      // Utiliza a fonte de origem do jogo base (ludopedia/bgg) e 'expansion'
       const results = await ludotecaService.searchExternalGames(
         expSearchQuery,
-        source,
+        getGameSource(editingGame.id),
         token,
         'expansion',
         editingGame.sourceId,
@@ -133,7 +133,11 @@ export const Ludoteca = () => {
     if (!editingGame || !user) return;
     try {
       const token = await user.getIdToken();
-      const details = await ludotecaService.getGameDetails(expBasic.id, source, token);
+      const details = await ludotecaService.getGameDetails(
+        expBasic.id,
+        getGameSource(expBasic.id),
+        token,
+      );
       const newExp = { ...expBasic, ...details };
       const currentExpansions = editingGame.expansions || [];
 
