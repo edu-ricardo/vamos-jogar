@@ -1,4 +1,5 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Sem a variável (dev): API local. Vazia (Docker/Umbrel): mesmo endereço do site, via proxy /api.
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001';
 
 export class ApiError extends Error {
   status: number;

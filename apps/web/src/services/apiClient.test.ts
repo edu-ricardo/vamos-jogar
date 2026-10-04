@@ -33,6 +33,18 @@ describe('apiRequest', () => {
     });
   });
 
+  it('VITE_API_URL vazia usa o mesmo endereço do site', async () => {
+    vi.stubEnv('VITE_API_URL', '');
+    vi.resetModules();
+    const { apiRequest: sameOriginRequest } = await import('./apiClient');
+    const fetchMock = mockFetch(200, {});
+
+    await sameOriginRequest('/api/health', { fallbackError: 'erro' });
+
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/health');
+    vi.unstubAllEnvs();
+  });
+
   it('GET sem corpo não envia Content-Type', async () => {
     const fetchMock = mockFetch(200, {});
     await apiRequest('/api/games/search', { idToken: 'tok', fallbackError: 'erro' });
