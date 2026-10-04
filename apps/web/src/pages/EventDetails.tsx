@@ -10,6 +10,7 @@ import {
   type EventGameOption,
 } from '../services/eventService';
 import { ludotecaService, type Game } from '../services/ludotecaService';
+import { groupService } from '../services/groupService';
 import toast from 'react-hot-toast';
 
 export const EventDetails = () => {
@@ -18,6 +19,7 @@ export const EventDetails = () => {
   const navigate = useNavigate();
 
   const [event, setEvent] = useState<Event | null>(null);
+  const [groupAdminId, setGroupAdminId] = useState('');
   const [loading, setLoading] = useState(true);
 
   // States para votação de Data/Local
@@ -49,8 +51,12 @@ export const EventDetails = () => {
   const loadEvent = async () => {
     if (!groupId || !eventId) return;
     try {
-      const fetched = await eventService.getEventDetails(groupId, eventId);
+      const [fetched, group] = await Promise.all([
+        eventService.getEventDetails(groupId, eventId),
+        groupService.fetchGroupDetails(groupId),
+      ]);
       setEvent(fetched);
+      setGroupAdminId(group?.adminId || '');
 
       if (user) {
         if (fetched.votesDate && fetched.votesDate[user.uid])
@@ -332,6 +338,9 @@ export const EventDetails = () => {
     return <div style={{ padding: '40px', textAlign: 'center' }}>Carregando evento...</div>;
   if (!event) return null;
 
+  // Criador do evento ou admin do grupo podem editar, excluir, cobrar e fechar etapas
+  const canManageEvent = !!user && (event.creatorId === user.uid || groupAdminId === user.uid);
+
   const finalDate = event.dateOptions.find((d) => d.id === event.finalDateId);
   const finalLocation = event.locationOptions.find((l) => l.id === event.finalLocationId);
 
@@ -378,7 +387,7 @@ export const EventDetails = () => {
           </span>
         </div>
 
-        {user && event.creatorId === user.uid && event.status === 'VOTING_DATE' && (
+        {canManageEvent && event.status === 'VOTING_DATE' && (
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               onClick={openEditModal}
@@ -399,7 +408,7 @@ export const EventDetails = () => {
       </header>
 
       <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-        {user && event.creatorId === user.uid && event.status !== 'CONFIRMED' && (
+        {canManageEvent && event.status !== 'CONFIRMED' && (
           <button
             onClick={handleForceReminders}
             className="btn-primary"
@@ -552,7 +561,7 @@ export const EventDetails = () => {
                 : 'Confirmar Voto'}
           </button>
 
-          {user && event.creatorId === user.uid && (
+          {canManageEvent && (
             <div
               style={{
                 marginTop: '30px',
