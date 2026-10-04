@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { updateProfile } from 'firebase/auth';
 import { groupService } from '../services/groupService';
 import { accountService } from '../services/accountService';
 import { ApiError } from '../services/apiClient';
 import toast from 'react-hot-toast';
 
 export const Conta = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateDisplayName } = useAuth();
   const [nickname, setNickname] = useState(user?.displayName || '');
   const [loading, setLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -17,7 +16,7 @@ export const Conta = () => {
     if (!user) return;
     setLoading(true);
     try {
-      await updateProfile(user, { displayName: nickname });
+      await updateDisplayName(nickname);
 
       const userGroups = await groupService.fetchUserGroups(user.uid);
 
