@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { updateProfile } from 'firebase/auth';
 import { groupService } from '../services/groupService';
-import { accountService, AccountError } from '../services/accountService';
+import { accountService } from '../services/accountService';
+import { ApiError } from '../services/apiClient';
 import toast from 'react-hot-toast';
 
 export const Conta = () => {
@@ -43,7 +44,7 @@ export const Conta = () => {
       toast.success('Conta excluída com sucesso.');
       logout();
     } catch (err: any) {
-      if (err instanceof AccountError && err.code === 'requires-recent-login') {
+      if (err instanceof ApiError && err.code === 'requires-recent-login') {
         toast.error('Por favor, saia e faça login novamente antes de excluir a conta.');
       } else {
         toast.error('Erro ao excluir conta.');

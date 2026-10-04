@@ -1,24 +1,12 @@
-export class AccountError extends Error {
-  code?: string;
-
-  constructor(message: string, code?: string) {
-    super(message);
-    this.code = code;
-  }
-}
+import { apiRequest } from './apiClient';
 
 export const accountService = {
   // A API remove a pessoa dos grupos, limpa votos abertos, ludoteca, favoritos e o login
   deleteAccount: async (idToken: string): Promise<void> => {
-    const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-    const response = await fetch(`${API_URL}/api/account`, {
+    await apiRequest('/api/account', {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${idToken}` },
+      idToken,
+      fallbackError: 'Erro ao excluir conta',
     });
-
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new AccountError(data.error || 'Erro ao excluir conta', data.code);
-    }
   },
 };

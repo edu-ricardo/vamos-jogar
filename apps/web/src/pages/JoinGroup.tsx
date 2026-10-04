@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { groupService } from '../services/groupService';
+import { ApiError } from '../services/apiClient';
 
 export const JoinGroup = () => {
   const { token } = useParams<{ token: string }>();
@@ -17,28 +19,16 @@ export const JoinGroup = () => {
       }
 
       try {
-        const idToken = await user.getIdToken();
-        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-        const response = await fetch(`${API_URL}/api/groups/join`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${idToken}`,
-          },
-          body: JSON.stringify({ inviteToken: token }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          setStatus(`Sucesso! Você entrou no grupo ${data.groupName}. Redirecionando...`);
-          setTimeout(() => navigate('/'), 2000);
-        } else {
-          setStatus(`Erro: ${data.error}`);
-        }
+        const data = await groupService.joinGroup(token, await user.getIdToken());
+        setStatus(`Sucesso! Você entrou no grupo ${data.groupName}. Redirecionando...`);
+        setTimeout(() => navigate('/'), 2000);
       } catch (err) {
-        setStatus('Erro ao conectar ao servidor.');
-        console.error(err);
+        if (err instanceof ApiError) {
+          setStatus(`Erro: ${err.message}`);
+        } else {
+          setStatus('Erro ao conectar ao servidor.');
+          console.error(err);
+        }
       }
     };
 

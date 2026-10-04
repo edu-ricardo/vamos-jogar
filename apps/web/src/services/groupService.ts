@@ -12,6 +12,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { apiRequest } from './apiClient';
 
 export interface Group {
   id: string;
@@ -21,6 +22,15 @@ export interface Group {
 }
 
 export const groupService = {
+  // Entrar por convite passa pela API, que valida o token e adiciona o membro
+  joinGroup: (inviteToken: string, idToken: string) =>
+    apiRequest<{ groupId: string; groupName: string }>('/api/groups/join', {
+      method: 'POST',
+      idToken,
+      body: { inviteToken },
+      fallbackError: 'Erro ao processar o convite.',
+    }),
+
   fetchUserGroups: async (uid: string): Promise<Group[]> => {
     try {
       const q = query(collection(db, 'groups'), where('members', 'array-contains', uid));

@@ -1,5 +1,6 @@
 import { collection, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { apiRequest } from './apiClient';
 
 export interface Game {
   id: string;
@@ -39,16 +40,12 @@ export const ludotecaService = {
     baseGameId?: string,
   ): Promise<Game[]> => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      let url = `${API_URL}/api/games/search?query=${encodeURIComponent(query)}&source=${source}&gameType=${gameType}`;
-      if (baseGameId) url += `&baseGameId=${encodeURIComponent(baseGameId)}`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
+      let path = `/api/games/search?query=${encodeURIComponent(query)}&source=${source}&gameType=${gameType}`;
+      if (baseGameId) path += `&baseGameId=${encodeURIComponent(baseGameId)}`;
+      const data = await apiRequest<{ games?: Game[] }>(path, {
+        idToken,
+        fallbackError: 'Erro na busca',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro na busca');
       return data.games || [];
     } catch (err) {
       console.error('Erro na busca de jogos via API externa:', err);
@@ -62,14 +59,10 @@ export const ludotecaService = {
     idToken: string,
   ): Promise<Game> => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const res = await fetch(`${API_URL}/api/games/details/${id}?source=${source}`, {
-        headers: {
-          Authorization: `Bearer ${idToken}`,
-        },
+      const data = await apiRequest<{ game: Game }>(`/api/games/details/${id}?source=${source}`, {
+        idToken,
+        fallbackError: 'Erro ao buscar detalhes',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erro ao buscar detalhes');
       return data.game;
     } catch (err) {
       console.error('Erro ao buscar detalhes do jogo via API externa:', err);

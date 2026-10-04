@@ -11,6 +11,7 @@ import {
   runTransaction,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import { apiRequest } from './apiClient';
 
 export interface EventDateOption {
   id: string;
@@ -267,18 +268,15 @@ export const eventService = {
     idToken: string,
   ): Promise<{ success: boolean; message: string }> => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${API_URL}/api/cron/force-event-reminders`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${idToken}`,
+      return await apiRequest<{ success: boolean; message: string }>(
+        '/api/cron/force-event-reminders',
+        {
+          method: 'POST',
+          idToken,
+          body: { groupId, eventId },
+          fallbackError: 'Erro ao notificar atrasados',
         },
-        body: JSON.stringify({ groupId, eventId }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Erro ao notificar atrasados');
-      return data;
+      );
     } catch (err) {
       console.error('Erro ao notificar:', err);
       throw err;
