@@ -9,7 +9,8 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "start": "npm --workspace=api run start",
-    "test:emulator": "firebase emulators:exec --only firestore --project demo-vamos-jogar \"vitest run --dir tests\""
+    "test:emulator": "firebase emulators:exec --only firestore --project demo-vamos-jogar \"vitest run --dir tests\"",
+    "test:pocketbase": "node scripts/test-pocketbase.mjs"
   },
   "workspaces": [
     "apps/*",

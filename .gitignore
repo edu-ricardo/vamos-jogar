@@ -15,3 +15,6 @@ dist
 
 # Backups de produção (dados pessoais)
 backups/
+
+# Dados locais do PocketBase
+apps/pocketbase/pb_data
