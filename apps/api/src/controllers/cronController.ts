@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { reminderService } from '../services/reminderService';
 
 const FORCE_ERRORS = {
-  GROUP_NOT_FOUND: { status: 404, error: 'Group not found' },
   EVENT_NOT_FOUND: { status: 404, error: 'Event not found' },
   FORBIDDEN: { status: 403, error: 'Only the event creator or group admin can send reminders' },
   EVENT_CONFIRMED: { status: 400, error: 'Event is already confirmed' },

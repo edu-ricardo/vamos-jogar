@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../lib/firebase-admin';
+import { createUserClient } from '../lib/pocketbase';
+import { verifyUserToken } from '../services/userTokenService';
 
 export const verifyAuth = async (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
@@ -9,10 +10,9 @@ export const verifyAuth = async (req: Request, res: Response, next: NextFunction
 
   const token = authHeader.split('Bearer ')[1];
   try {
-    const decodedToken = await auth.verifyIdToken(token);
-    (req as any).user = decodedToken;
+    (req as any).user = await verifyUserToken(createUserClient(token));
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ error: 'Token inválido ou expirado' });
   }
 };

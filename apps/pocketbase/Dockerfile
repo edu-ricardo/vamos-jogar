@@ -13,6 +13,8 @@ RUN apk add --no-cache ca-certificates unzip wget \
 
 # Esquema e regras de acesso versionados; aplicados automaticamente ao iniciar
 COPY apps/pocketbase/pb_migrations /pb/pb_migrations
+COPY --chmod=755 apps/pocketbase/entrypoint.sh /pb/entrypoint.sh
 
 EXPOSE 8090
-CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb_data", "--migrationsDir=/pb/pb_migrations", "--automigrate=false"]
+# Dados em /pb_data: monte um volume persistente nesse caminho
+CMD ["/pb/entrypoint.sh"]

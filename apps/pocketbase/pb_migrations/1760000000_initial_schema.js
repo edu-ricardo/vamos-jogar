@@ -86,7 +86,8 @@ migrate(
       deleteRule: `${memberOfGroup} && ${managesEvent}`,
       fields: [
         relation('group', groups.id),
-        relation('creator', usersId, { cascadeDelete: false }),
+        // Vazio se a conta for excluída; o evento continua com o admin do grupo
+        relation('creator', usersId, { required: false, cascadeDelete: false }),
         { name: 'title', type: 'text', required: true, max: 200 },
         {
           name: 'status',
@@ -123,7 +124,8 @@ migrate(
         { name: 'gameId', type: 'text', required: true, max: 64 },
         { name: 'name', type: 'text', required: true, max: 300 },
         { name: 'thumb', type: 'text', max: 2000 },
-        relation('suggester', usersId),
+        // Vazio se a conta for excluída; o nome sugerido continua em suggesterName
+        relation('suggester', usersId, { required: false, cascadeDelete: false }),
         { name: 'suggesterName', type: 'text', max: 120 },
         created(),
       ],
@@ -144,14 +146,15 @@ migrate(
       deleteRule: null,
       fields: [
         relation('event', events.id),
-        relation('user', usersId),
+        // Vazio se a conta for excluída: votos de eventos encerrados ficam como histórico
+        relation('user', usersId, { required: false, cascadeDelete: false }),
         { name: 'dateOptionId', type: 'text', max: 64 },
         { name: 'locationOptionId', type: 'text', max: 64 },
         { name: 'gameIds', type: 'json', maxSize: 200000 },
         created(),
         updated(),
       ],
-      indexes: ['CREATE UNIQUE INDEX idx_votes_event_user ON votes (event, user)'],
+      indexes: ["CREATE UNIQUE INDEX idx_votes_event_user ON votes (event, user) WHERE user != ''"],
     });
     app.save(votes);
 

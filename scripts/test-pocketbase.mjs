@@ -33,19 +33,14 @@ try {
     `${PORT}:8090`,
     '--tmpfs',
     '/pb_data',
+    // O superusuário é criado pelo entrypoint da imagem, como no Umbrel
+    '-e',
+    `PB_SUPERUSER_EMAIL=${ADMIN.email}`,
+    '-e',
+    `PB_SUPERUSER_PASSWORD=${ADMIN.password}`,
     `${CONTAINER}:latest`,
   );
   await waitForHealth();
-  docker(
-    'exec',
-    CONTAINER,
-    '/pb/pocketbase',
-    'superuser',
-    'upsert',
-    ADMIN.email,
-    ADMIN.password,
-    '--dir=/pb_data',
-  );
 
   // Os arquivos dividem o mesmo banco: rodam um de cada vez
   const result = spawnSync(
@@ -56,6 +51,7 @@ try {
       'tests/repositories.pocketbase.test.ts',
       'tests/pocketbase.rules.test.ts',
       'tests/pocketbase.auth.test.ts',
+      'tests/pocketbase.api.test.ts',
       '--no-file-parallelism',
     ],
     {

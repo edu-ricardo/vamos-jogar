@@ -3,7 +3,7 @@
 // Credenciais: FIREBASE_SERVICE_ACCOUNT_KEY no apps/api/.env ou GOOGLE_APPLICATION_CREDENTIALS
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { db, auth } from '../../src/lib/firebase-admin';
+import { db, auth } from './firebaseAdmin';
 import { exportAuthUsers, exportFirestore, summarizeBackup } from './exportData';
 
 const outArgIndex = process.argv.indexOf('--out');
