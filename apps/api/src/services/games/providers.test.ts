@@ -52,8 +52,18 @@ describe('LudopediaProvider', () => {
 describe('BggProvider', () => {
   const setup = (xml: string) => {
     const httpGet = vi.fn().mockResolvedValue({ data: xml });
-    return { httpGet, provider: new BggProvider(httpGet) };
+    return { httpGet, provider: new BggProvider(httpGet, () => 'bgg-tok') };
   };
+
+  it('envia o token da aplicação na busca e nos detalhes', async () => {
+    const { httpGet, provider } = setup('<items></items>');
+    await provider.search({ query: 'catan', gameType: 'base' });
+    await provider.getDetails('bgg-13');
+    expect(httpGet.mock.calls.map((call) => call[1])).toEqual([
+      { Authorization: 'Bearer bgg-tok' },
+      { Authorization: 'Bearer bgg-tok' },
+    ]);
+  });
 
   it('busca no tipo certo e aceita um ou vários nomes', async () => {
     const { httpGet, provider } = setup(

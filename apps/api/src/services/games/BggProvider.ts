@@ -14,7 +14,15 @@ const nameOf = (item: any) => (Array.isArray(item.name) ? item.name[0]?.value : 
 export class BggProvider implements GameProvider {
   private readonly parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
 
-  constructor(private readonly httpGet: HttpGet) {}
+  constructor(
+    private readonly httpGet: HttpGet,
+    private readonly getToken: () => string | undefined,
+  ) {}
+
+  // A XML API2 do BGG responde 401 sem o token da aplicação
+  private authHeaders() {
+    return { Authorization: `Bearer ${this.getToken()}` };
+  }
 
   async search({ query, gameType }: GameSearchParams): Promise<GameSummary[]> {
     // O /search do BGG não aceita texto vazio; listar expansões pelo jogo base exigiria o /thing
@@ -23,6 +31,7 @@ export class BggProvider implements GameProvider {
     const bggType = gameType === 'expansion' ? 'boardgameexpansion' : 'boardgame';
     const response = await this.httpGet(
       `${BASE_URL}/search?query=${encodeURIComponent(query)}&type=${bggType}`,
+      this.authHeaders(),
     );
     const data = this.parser.parse(response.data);
 
@@ -39,7 +48,7 @@ export class BggProvider implements GameProvider {
 
   async getDetails(id: string): Promise<GameDetails | null> {
     const cleanId = id.replace('bgg-', '');
-    const response = await this.httpGet(`${BASE_URL}/thing?id=${cleanId}`);
+    const response = await this.httpGet(`${BASE_URL}/thing?id=${cleanId}`, this.authHeaders());
     const item = this.parser.parse(response.data).items?.item;
     if (!item) return null;
 

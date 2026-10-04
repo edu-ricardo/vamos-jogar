@@ -7,7 +7,7 @@ const httpGet: HttpGet = (url, headers) => axios.get(url, { headers });
 
 const providers: Record<'ludopedia' | 'bgg', GameProvider> = {
   ludopedia: new LudopediaProvider(httpGet, () => process.env.LUDOPEDIA_ACCESS_TOKEN),
-  bgg: new BggProvider(httpGet),
+  bgg: new BggProvider(httpGet, () => process.env.BGG_API_KEY),
 };
 
 // Ludopedia é a fonte padrão, como antes da extração dos providers
