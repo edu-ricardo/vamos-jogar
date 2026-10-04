@@ -19,6 +19,13 @@ export const createPocketBaseAuthGateway = (pb: PocketBase): AuthGateway => {
       // O SDK avisa login, logout e também alterações no próprio registro (ex.: apelido)
       const unsubscribe = pb.authStore.onChange(() => callback(currentUser()));
       callback(currentUser());
+      // A sessão guardada pode não valer mais (conta apagada, banco reimportado): confirma com
+      // o servidor e, se recusada, sai. De quebra, renova o token de quem continua válido.
+      if (pb.authStore.isValid) {
+        pb.collection('users')
+          .authRefresh()
+          .catch(() => pb.authStore.clear());
+      }
       return unsubscribe;
     },
 

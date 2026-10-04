@@ -38,6 +38,32 @@ describeIfPocketBase('AuthGateway PocketBase', () => {
     expect(callback).toHaveBeenLastCalledWith(expect.objectContaining({ uid: user.uid }));
   });
 
+  it('sessão guardada de uma conta que não existe mais leva de volta ao login', async () => {
+    const pb = new PocketBase(url);
+    pb.autoCancellation(false);
+    const email = `apagada-${Date.now()}@vamosjogar.test`;
+    await pb
+      .collection('users')
+      .create({ email, password: 'senha-de-teste-123', passwordConfirm: 'senha-de-teste-123' });
+    await pb.collection('users').authWithPassword(email, 'senha-de-teste-123');
+    const { token, record } = pb.authStore;
+
+    // Simula o banco reimportado: a conta some, mas o navegador ainda guarda o token
+    const admin = new PocketBase(url);
+    await admin
+      .collection('_superusers')
+      .authWithPassword(process.env.PB_TEST_ADMIN_EMAIL!, process.env.PB_TEST_ADMIN_PASSWORD!);
+    await admin.collection('users').delete(record!.id);
+
+    const reopened = new PocketBase(url);
+    reopened.authStore.save(token, record);
+    const callback = vi.fn();
+    createPocketBaseAuthGateway(reopened).onUserChanged(callback);
+
+    expect(callback).toHaveBeenNthCalledWith(1, expect.objectContaining({ uid: record!.id }));
+    await vi.waitFor(() => expect(callback).toHaveBeenLastCalledWith(null));
+  });
+
   it('senha errada é recusada', async () => {
     const gateway = createPocketBaseAuthGateway(new PocketBase(url));
     await expect(gateway.signInWithEmail('ninguem@vamosjogar.test', 'errada')).rejects.toThrow();
