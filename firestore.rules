@@ -1,28 +1,112 @@
 rules_version = '2';
 
+// A API (Admin SDK) ignora estas regras: entrar por convite, lembretes e exclusão de conta passam por ela.
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Regras Globais
-    match /{document=**} {
-      allow read, write: if false; // Por padrão tudo bloqueado
+
+    function signedIn() {
+      return request.auth != null;
     }
 
-    // Regras para Grupos
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function groupData(groupId) {
+      return get(/databases/$(database)/documents/groups/$(groupId)).data;
+    }
+
+    function isMember(groupId) {
+      return signedIn() && request.auth.uid in groupData(groupId).members;
+    }
+
+    function isGroupAdmin(groupId) {
+      return signedIn() && groupData(groupId).adminId == request.auth.uid;
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // Garante que, num mapa de votos, só a entrada do próprio usuário mudou
+    function onlyOwnVoteChanged(field) {
+      return !(field in changedKeys())
+        || request.resource.data.get(field, {}).diff(resource.data.get(field, {})).affectedKeys()
+             .hasOnly([request.auth.uid]);
+    }
+
+    // Por padrão tudo bloqueado
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
     match /groups/{groupId} {
-      // Leitura: Apenas membros do grupo
-      allow read: if request.auth != null && request.auth.uid in resource.data.members;
-      
-      // Criação: Qualquer usuário autenticado pode criar, desde que se coloque como admin e membro
-      allow create: if request.auth != null 
-                    && request.resource.data.adminId == request.auth.uid
-                    && request.auth.uid in request.resource.data.members;
-                    
-      // Atualização: Apenas o admin pode alterar os dados do grupo via cliente
-      // (A adição de novos membros por link será feita pelo backend/API admin)
-      allow update: if request.auth != null && resource.data.adminId == request.auth.uid;
-      
-      allow delete: if request.auth != null && resource.data.adminId == request.auth.uid;
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+
+      // Quem cria vira admin e único membro; os demais entram pela API com o convite
+      allow create: if signedIn()
+        && request.resource.data.adminId == request.auth.uid
+        && request.resource.data.members == [request.auth.uid];
+
+      allow update, delete: if signedIn() && resource.data.adminId == request.auth.uid;
+
+      match /members/{memberId} {
+        allow read: if isMember(groupId);
+
+        // Cada membro mantém o próprio apelido
+        allow create, update: if isSelf(memberId)
+          && isMember(groupId)
+          && request.resource.data.keys().hasOnly(['name']);
+
+        allow delete: if isGroupAdmin(groupId);
+      }
+
+      match /events/{eventId} {
+        function canManage() {
+          return resource.data.creatorId == request.auth.uid || isGroupAdmin(groupId);
+        }
+
+        allow read: if isMember(groupId);
+
+        allow create: if isMember(groupId)
+          && request.resource.data.creatorId == request.auth.uid
+          && request.resource.data.status == 'VOTING_DATE';
+
+        // Criador do evento ou admin do grupo: editar opções e avançar etapas
+        allow update: if isMember(groupId) && canManage()
+          && changedKeys().hasOnly(['title', 'dateOptions', 'locationOptions', 'status', 'finalDateId', 'finalLocationId']);
+
+        // Qualquer membro: registrar o próprio voto enquanto o evento está aberto
+        allow update: if isMember(groupId)
+          && resource.data.status != 'CONFIRMED'
+          && changedKeys().hasOnly(['votesDate', 'votesLocation', 'votesGames'])
+          && onlyOwnVoteChanged('votesDate')
+          && onlyOwnVoteChanged('votesLocation')
+          && onlyOwnVoteChanged('votesGames');
+
+        // Qualquer membro: sugerir jogos na fase de jogos, sem remover sugestões existentes
+        allow update: if isMember(groupId)
+          && resource.data.status == 'VOTING_GAMES'
+          && changedKeys().hasOnly(['gameOptions'])
+          && request.resource.data.gameOptions.size() >= resource.data.get('gameOptions', []).size();
+
+        allow delete: if isMember(groupId) && canManage();
+      }
+    }
+
+    match /users/{uid} {
+      allow read, write: if isSelf(uid);
+
+      // Ludoteca: o dono edita; qualquer usuário logado pode ver (usado em "Ver Ludoteca" do grupo)
+      match /collection/{gameId} {
+        allow read: if signedIn();
+        allow write: if isSelf(uid);
+      }
+
+      // Endereços são pessoais: só o dono acessa
+      match /favoriteLocations/{locationId} {
+        allow read, write: if isSelf(uid);
+      }
     }
   }
 }

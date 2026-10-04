@@ -9,3 +9,6 @@ node_modules
 dist
 .turbo
 .firebase
+
+# Logs dos emuladores do Firebase
+*-debug.log
