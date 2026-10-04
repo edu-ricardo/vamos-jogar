@@ -1,6 +1,7 @@
 name: Imagens Docker
 
-# Publica ghcr.io/<dono>/vamos-jogar-api e -web ao criar uma tag vX.Y.Z (ou manualmente)
+# Publica ghcr.io/<dono>/vamos-jogar-api e -web ao criar uma tag vX.Y.Z (ou manualmente).
+# Tags com sufixo (ex.: v1.0.0-homolog) geram só a imagem 1.0.0-homolog, sem mexer na latest.
 on:
   push:
     tags: ['v*']
@@ -34,7 +35,7 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=sha
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ !contains(github.ref_name, '-') }}
 
       # O Umbrel é x86: só linux/amd64
       - uses: docker/build-push-action@v6
