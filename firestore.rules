@@ -74,7 +74,7 @@ service cloud.firestore {
 
         // Criador do evento ou admin do grupo: editar opções e avançar etapas
         allow update: if isMember(groupId) && canManage()
-          && changedKeys().hasOnly(['title', 'dateOptions', 'locationOptions', 'status', 'finalDateId', 'finalLocationId']);
+          && changedKeys().hasOnly(['title', 'dateOptions', 'locationOptions', 'status', 'finalDateId', 'finalLocationId', 'finalGameIds']);
 
         // Qualquer membro: registrar o próprio voto enquanto o evento está aberto
         allow update: if isMember(groupId)

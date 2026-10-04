@@ -11,6 +11,7 @@ import {
 } from '../services/eventService';
 import { ludotecaService, type Game } from '../services/ludotecaService';
 import { groupService } from '../services/groupService';
+import { rankGameOptions } from '../services/eventResults';
 import toast from 'react-hot-toast';
 
 export const EventDetails = () => {
@@ -47,6 +48,10 @@ export const EventDetails = () => {
 
   // Parciais de Votação
   const [showResultsModal, setShowResultsModal] = useState(false);
+
+  // Encerramento da votação de jogos
+  const [showCloseGamesModal, setShowCloseGamesModal] = useState(false);
+  const [finalGameSelection, setFinalGameSelection] = useState<string[]>([]);
 
   const loadEvent = async () => {
     if (!groupId || !eventId) return;
@@ -297,20 +302,8 @@ export const EventDetails = () => {
     // Jogos (se fase 5)
     if (event.gameOptions && event.gameOptions.length > 0) {
       report += '\n*🧩 Jogos:*\n';
-      const allGameVotes = Object.values(event.votesGames || {}).flat();
-      const gameVotesCount = allGameVotes.reduce(
-        (acc, val) => {
-          acc[val] = (acc[val] || 0) + 1;
-          return acc;
-        },
-        {} as Record<string, number>,
-      );
-      const sortedGames = [...event.gameOptions].sort(
-        (a, b) => (gameVotesCount[b.id] || 0) - (gameVotesCount[a.id] || 0),
-      );
-      sortedGames.forEach((g) => {
-        const votes = gameVotesCount[g.id] || 0;
-        report += `- ${g.name}: ${votes} voto(s)\n`;
+      rankGameOptions(event.gameOptions, event.votesGames).forEach(({ game, votes }) => {
+        report += `- ${game.name}: ${votes} voto(s)\n`;
       });
     }
 
@@ -321,6 +314,36 @@ export const EventDetails = () => {
   const copyResults = () => {
     navigator.clipboard.writeText(getResultsReport());
     toast.success('Resultados copiados para a área de transferência!');
+  };
+
+  // Pré-seleciona os jogos que receberam ao menos um voto
+  const openCloseGames = () => {
+    if (!event) return;
+    setFinalGameSelection(
+      rankGameOptions(event.gameOptions, event.votesGames)
+        .filter(({ votes }) => votes > 0)
+        .map(({ game }) => game.id),
+    );
+    setShowCloseGamesModal(true);
+  };
+
+  const handleConfirmEvent = async () => {
+    if (!groupId || !eventId) return;
+    if (finalGameSelection.length === 0) {
+      toast.error('Selecione pelo menos um jogo para a mesa.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await eventService.confirmEvent(groupId, eventId, finalGameSelection);
+      toast.success('Jogatina confirmada!');
+      setShowCloseGamesModal(false);
+      loadEvent();
+    } catch (err) {
+      toast.error('Erro ao encerrar votação de jogos.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleForceReminders = async () => {
@@ -383,7 +406,12 @@ export const EventDetails = () => {
               fontWeight: 'bold',
             }}
           >
-            STATUS: {event.status === 'VOTING_DATE' ? 'Votação de Data' : 'Votação de Jogos'}
+            STATUS:{' '}
+            {event.status === 'VOTING_DATE'
+              ? 'Votação de Data'
+              : event.status === 'VOTING_GAMES'
+                ? 'Votação de Jogos'
+                : 'Confirmado'}
           </span>
         </div>
 
@@ -585,8 +613,8 @@ export const EventDetails = () => {
         </section>
       )}
 
-      {/* TELA DE VOTING GAMES */}
-      {event.status === 'VOTING_GAMES' && (
+      {/* TELA DE VOTING GAMES E EVENTO CONFIRMADO */}
+      {(event.status === 'VOTING_GAMES' || event.status === 'CONFIRMED') && (
         <section>
           {finalDate && finalLocation && (
             <div
@@ -626,108 +654,179 @@ export const EventDetails = () => {
             </div>
           )}
 
-          <div
-            style={{
-              background: 'var(--bg-tertiary)',
-              padding: '20px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-color)',
-            }}
-          >
+          {event.status === 'VOTING_GAMES' ? (
             <div
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px',
+                background: 'var(--bg-tertiary)',
+                padding: '20px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)',
               }}
             >
-              <h2>O que vamos jogar?</h2>
-              <button
-                onClick={openSuggestGames}
-                className="btn-primary"
-                style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-              >
-                + Sugerir Jogos
-              </button>
-            </div>
-
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>
-              Vote nos jogos que você quer que estejam na mesa. Pode votar em quantos quiser!
-            </p>
-
-            {!event.gameOptions || event.gameOptions.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '40px 0' }}>
-                Nenhum jogo sugerido ainda. Puxe algo da sua Ludoteca!
-              </p>
-            ) : (
               <div
                 style={{
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: '10px',
-                  marginBottom: '30px',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '20px',
                 }}
               >
-                {event.gameOptions.map((g) => (
-                  <label
-                    key={g.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '15px',
-                      cursor: 'pointer',
-                      padding: '15px',
-                      background: 'var(--bg-secondary)',
-                      borderRadius: 'var(--radius-sm)',
-                      border: selectedGamesToVote.includes(g.id)
-                        ? '1px solid var(--accent-primary)'
-                        : '1px solid transparent',
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedGamesToVote.includes(g.id)}
-                      onChange={(e) => {
-                        if (e.target.checked)
-                          setSelectedGamesToVote([...selectedGamesToVote, g.id]);
-                        else
-                          setSelectedGamesToVote(selectedGamesToVote.filter((id) => id !== g.id));
-                      }}
-                      style={{ accentColor: 'var(--accent-primary)', transform: 'scale(1.2)' }}
-                    />
-                    <img
-                      src={g.thumb}
-                      alt={g.name}
+                <h2>O que vamos jogar?</h2>
+                <button
+                  onClick={openSuggestGames}
+                  className="btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '0.9rem' }}
+                >
+                  + Sugerir Jogos
+                </button>
+              </div>
+
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>
+                Vote nos jogos que você quer que estejam na mesa. Pode votar em quantos quiser!
+              </p>
+
+              {!event.gameOptions || event.gameOptions.length === 0 ? (
+                <p
+                  style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '40px 0' }}
+                >
+                  Nenhum jogo sugerido ainda. Puxe algo da sua Ludoteca!
+                </p>
+              ) : (
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    marginBottom: '30px',
+                  }}
+                >
+                  {event.gameOptions.map((g) => (
+                    <label
+                      key={g.id}
                       style={{
-                        width: '50px',
-                        height: '50px',
-                        objectFit: 'cover',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '15px',
+                        cursor: 'pointer',
+                        padding: '15px',
+                        background: 'var(--bg-secondary)',
+                        borderRadius: 'var(--radius-sm)',
+                        border: selectedGamesToVote.includes(g.id)
+                          ? '1px solid var(--accent-primary)'
+                          : '1px solid transparent',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedGamesToVote.includes(g.id)}
+                        onChange={(e) => {
+                          if (e.target.checked)
+                            setSelectedGamesToVote([...selectedGamesToVote, g.id]);
+                          else
+                            setSelectedGamesToVote(selectedGamesToVote.filter((id) => id !== g.id));
+                        }}
+                        style={{ accentColor: 'var(--accent-primary)', transform: 'scale(1.2)' }}
+                      />
+                      <img
+                        src={g.thumb}
+                        alt={g.name}
+                        style={{
+                          width: '50px',
+                          height: '50px',
+                          objectFit: 'cover',
+                          borderRadius: 'var(--radius-sm)',
+                        }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ display: 'block', fontSize: '1.1rem' }}>{g.name}</strong>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                          Sugerido por: {g.suggesterName}
+                        </span>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {event.gameOptions && event.gameOptions.length > 0 && (
+                <button
+                  onClick={handleVoteGames}
+                  disabled={submitting}
+                  className="btn-primary"
+                  style={{ width: '100%', padding: '15px', fontSize: '1.1rem' }}
+                >
+                  {submitting ? 'Registrando...' : 'Confirmar Votos'}
+                </button>
+              )}
+
+              {canManageEvent && event.gameOptions && event.gameOptions.length > 0 && (
+                <div
+                  style={{
+                    marginTop: '30px',
+                    paddingTop: '30px',
+                    borderTop: '1px solid var(--border-color)',
+                    textAlign: 'center',
+                  }}
+                >
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>
+                    Quando todos tiverem votado, escolha os jogos da mesa e confirme a jogatina:
+                  </p>
+                  <button
+                    onClick={openCloseGames}
+                    className="btn-primary"
+                    style={{ background: '#059669', width: '100%' }}
+                  >
+                    Encerrar Votação de Jogos &rarr;
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div
+              style={{
+                background: 'var(--bg-tertiary)',
+                padding: '20px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)',
+              }}
+            >
+              <h2 style={{ marginBottom: '20px' }}>Jogos da Mesa</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {(event.gameOptions || [])
+                  .filter((g) => event.finalGameIds?.includes(g.id))
+                  .map((g) => (
+                    <div
+                      key={g.id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '15px',
+                        padding: '15px',
+                        background: 'var(--bg-secondary)',
                         borderRadius: 'var(--radius-sm)',
                       }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <strong style={{ display: 'block', fontSize: '1.1rem' }}>{g.name}</strong>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                        Sugerido por: {g.suggesterName}
-                      </span>
+                    >
+                      <img
+                        src={g.thumb}
+                        alt={g.name}
+                        style={{
+                          width: '50px',
+                          height: '50px',
+                          objectFit: 'cover',
+                          borderRadius: 'var(--radius-sm)',
+                        }}
+                      />
+                      <div style={{ flex: 1 }}>
+                        <strong style={{ display: 'block', fontSize: '1.1rem' }}>{g.name}</strong>
+                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                          Leva: {g.suggesterName}
+                        </span>
+                      </div>
                     </div>
-                  </label>
-                ))}
+                  ))}
               </div>
-            )}
-
-            {event.gameOptions && event.gameOptions.length > 0 && (
-              <button
-                onClick={handleVoteGames}
-                disabled={submitting}
-                className="btn-primary"
-                style={{ width: '100%', padding: '15px', fontSize: '1.1rem' }}
-              >
-                {submitting ? 'Registrando...' : 'Confirmar Votos'}
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -1122,6 +1221,99 @@ export const EventDetails = () => {
                 className="btn-primary"
               >
                 Enviar para Mesa
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Encerrar Votação de Jogos */}
+      {showCloseGamesModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+          }}
+        >
+          <div
+            style={{
+              background: 'var(--bg-secondary)',
+              borderRadius: 'var(--radius-md)',
+              width: '100%',
+              maxWidth: '600px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              padding: '20px',
+            }}
+          >
+            <h2 style={{ marginTop: 0, marginBottom: '10px' }}>Encerrar Votação de Jogos</h2>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
+              Marque os jogos que vão para a mesa. Depois de confirmar, ninguém mais vota.
+            </p>
+
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                marginBottom: '30px',
+                maxHeight: '300px',
+                overflowY: 'auto',
+              }}
+            >
+              {rankGameOptions(event.gameOptions, event.votesGames).map(({ game, votes }) => (
+                <label
+                  key={game.id}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '15px',
+                    cursor: 'pointer',
+                    padding: '10px',
+                    background: 'var(--bg-tertiary)',
+                    borderRadius: 'var(--radius-sm)',
+                    border: finalGameSelection.includes(game.id)
+                      ? '1px solid var(--accent-primary)'
+                      : '1px solid transparent',
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={finalGameSelection.includes(game.id)}
+                    onChange={(e) => {
+                      if (e.target.checked) setFinalGameSelection([...finalGameSelection, game.id]);
+                      else setFinalGameSelection(finalGameSelection.filter((id) => id !== game.id));
+                    }}
+                    style={{ accentColor: 'var(--accent-primary)' }}
+                  />
+                  <strong style={{ flex: 1, fontSize: '1rem' }}>{game.name}</strong>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                    {votes} voto(s)
+                  </span>
+                </label>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowCloseGamesModal(false)}
+                className="btn-danger"
+                style={{ background: 'transparent', border: 'none' }}
+              >
+                Cancelar
+              </button>
+              <button onClick={handleConfirmEvent} disabled={submitting} className="btn-primary">
+                {submitting ? 'Confirmando...' : 'Confirmar Jogatina'}
               </button>
             </div>
           </div>

@@ -8,6 +8,7 @@ import {
   query,
   orderBy,
   serverTimestamp,
+  runTransaction,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -49,6 +50,7 @@ export interface Event {
   gameOptions?: EventGameOption[];
   finalDateId?: string;
   finalLocationId?: string;
+  finalGameIds?: string[];
   votesDate: { [userId: string]: string }; // userId -> dateOption.id
   votesLocation: { [userId: string]: string }; // userId -> locationOption.id
   votesGames?: { [userId: string]: string[] }; // userId -> array of gameOption.id
@@ -205,23 +207,39 @@ export const eventService = {
   ): Promise<void> => {
     try {
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
-      const snapshot = await getDoc(docRef);
-      if (!snapshot.exists()) throw new Error('Evento não encontrado');
+      // Transação: se outra pessoa sugerir ao mesmo tempo, a leitura é refeita e nada se perde
+      await runTransaction(db, async (transaction) => {
+        const snapshot = await transaction.get(docRef);
+        if (!snapshot.exists()) throw new Error('Evento não encontrado');
 
-      const existingGames: EventGameOption[] = snapshot.data().gameOptions || [];
-      // Combine avoiding duplicates by game ID
-      const newGamesMap = new Map(existingGames.map((g) => [g.id, g]));
-      for (const g of games) {
-        if (!newGamesMap.has(g.id)) {
-          newGamesMap.set(g.id, g);
+        const existingGames: EventGameOption[] = snapshot.data().gameOptions || [];
+        // Combine avoiding duplicates by game ID
+        const newGamesMap = new Map(existingGames.map((g) => [g.id, g]));
+        for (const g of games) {
+          if (!newGamesMap.has(g.id)) {
+            newGamesMap.set(g.id, g);
+          }
         }
-      }
 
-      await updateDoc(docRef, {
-        gameOptions: Array.from(newGamesMap.values()),
+        transaction.update(docRef, {
+          gameOptions: Array.from(newGamesMap.values()),
+        });
       });
     } catch (err) {
       console.error('Erro ao sugerir jogos:', err);
+      throw err;
+    }
+  },
+
+  confirmEvent: async (groupId: string, eventId: string, finalGameIds: string[]): Promise<void> => {
+    try {
+      const docRef = doc(db, `groups/${groupId}/events`, eventId);
+      await updateDoc(docRef, {
+        status: 'CONFIRMED',
+        finalGameIds,
+      });
+    } catch (err) {
+      console.error('Erro ao encerrar votação de jogos:', err);
       throw err;
     }
   },

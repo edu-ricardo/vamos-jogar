@@ -197,6 +197,15 @@ describe('eventos', () => {
     );
   });
 
+  it('encerrar votação de jogos: só criador ou admin; depois não há mais votos', async () => {
+    const confirm = { status: 'CONFIRMED', finalGameIds: ['ludo-1'] };
+    await assertFails(updateDoc(doc(db('caio'), 'groups/g1/events/e2'), confirm));
+    await assertSucceeds(updateDoc(doc(db('ana'), 'groups/g1/events/e2'), confirm));
+    await assertFails(
+      updateDoc(doc(db('caio'), 'groups/g1/events/e2'), { 'votesGames.caio': ['ludo-1'] }),
+    );
+  });
+
   it('nenhum cliente grava o controle de lembretes', async () => {
     await assertFails(
       updateDoc(doc(db('ana'), 'groups/g1/events/e1'), { lastReminderSentAt: new Date() }),
