@@ -3,7 +3,11 @@ import type { GameProvider, HttpGet } from './GameProvider';
 import { LudopediaProvider } from './LudopediaProvider';
 import { BggProvider } from './BggProvider';
 
-const httpGet: HttpGet = (url, headers) => axios.get(url, { headers });
+// Sem limite, uma API externa travada segura a requisição até o nginx desistir (504 sem explicação)
+const EXTERNAL_API_TIMEOUT_MS = 15_000;
+
+const httpGet: HttpGet = (url, headers) =>
+  axios.get(url, { headers, timeout: EXTERNAL_API_TIMEOUT_MS });
 
 const providers: Record<'ludopedia' | 'bgg', GameProvider> = {
   ludopedia: new LudopediaProvider(httpGet, () => process.env.LUDOPEDIA_ACCESS_TOKEN),
