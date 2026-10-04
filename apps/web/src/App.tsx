@@ -32,83 +32,83 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 const AppRoutes = () => {
   return (
     <Routes>
-      <Route 
-        path="/login" 
+      <Route
+        path="/login"
         element={
           <PublicRoute>
             <Login />
           </PublicRoute>
-        } 
+        }
       />
-      <Route 
-        path="/join/:token" 
+      <Route
+        path="/join/:token"
         element={
           <ProtectedRoute>
             <Layout>
               <JoinGroup />
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/ludoteca" 
+      <Route
+        path="/ludoteca"
         element={
           <ProtectedRoute>
             <Layout>
               <Ludoteca />
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/grupos" 
+      <Route
+        path="/grupos"
         element={
           <ProtectedRoute>
             <Layout>
               <Grupos />
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/conta" 
+      <Route
+        path="/conta"
         element={
           <ProtectedRoute>
             <Layout>
               <Conta />
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/" 
+      <Route
+        path="/"
         element={
           <ProtectedRoute>
             <Layout>
               <Dashboard />
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/group/:id" 
+      <Route
+        path="/group/:id"
         element={
           <ProtectedRoute>
             <Layout>
               <GroupDetails />
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
-      <Route 
-        path="/event/:groupId/:eventId" 
+      <Route
+        path="/event/:groupId/:eventId"
         element={
           <ProtectedRoute>
             <Layout>
               <EventDetails />
             </Layout>
           </ProtectedRoute>
-        } 
+        }
       />
     </Routes>
   );
@@ -119,7 +119,10 @@ function App() {
     <AuthProvider>
       <Router>
         <AppRoutes />
-        <Toaster position="bottom-center" toastOptions={{ style: { background: '#333', color: '#fff' } }} />
+        <Toaster
+          position="bottom-center"
+          toastOptions={{ style: { background: '#333', color: '#fff' } }}
+        />
       </Router>
     </AuthProvider>
   );

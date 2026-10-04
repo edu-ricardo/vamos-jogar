@@ -9,11 +9,11 @@ try {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
     initializeApp({
       credential: cert(serviceAccount),
-      projectId: 'vamos-jogar-31b9b'
+      projectId: 'vamos-jogar-31b9b',
     });
   } else {
     initializeApp({
-      projectId: 'vamos-jogar-31b9b'
+      projectId: 'vamos-jogar-31b9b',
     });
   }
 } catch (e) {

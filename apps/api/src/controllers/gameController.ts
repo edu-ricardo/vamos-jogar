@@ -11,54 +11,55 @@ export const searchGames = async (req: Request, res: Response) => {
 
   try {
     if (source === 'bgg') {
-      const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
-      
+      const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
 
       if (!query && baseGameId) {
-        // Se a query está vazia, o BGG /search falha. 
-        // Para BGG, precisaríamos usar o endpoint /thing para pegar os links de expansão, 
-        // mas para simplificar, vamos retornar vazio se não houver query de texto, 
+        // Se a query está vazia, o BGG /search falha.
+        // Para BGG, precisaríamos usar o endpoint /thing para pegar os links de expansão,
+        // mas para simplificar, vamos retornar vazio se não houver query de texto,
         // pois a busca do BGG por string vazia não é suportada diretamente via /search.
         return res.json({ games: [] });
       }
 
       const bggType = gameType === 'expansion' ? 'boardgameexpansion' : 'boardgame';
-      const searchRes = await axios.get(`https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(query as string)}&type=${bggType}`);
+      const searchRes = await axios.get(
+        `https://boardgamegeek.com/xmlapi2/search?query=${encodeURIComponent(query as string)}&type=${bggType}`,
+      );
       const searchData = parser.parse(searchRes.data);
-      
+
       let items = searchData.items?.item || [];
       if (!Array.isArray(items)) items = [items];
-      
+
       const topItems = items.slice(0, 10);
       if (topItems.length === 0) return res.json({ games: [] });
-      
+
       const games = topItems.map((item: any) => ({
         id: `bgg-${item.id}`,
         sourceId: item.id,
         name: Array.isArray(item.name) ? item.name[0]?.value : item.name?.value,
-        image: '' // A busca básica do BGG XML2 não retorna thumb, pegaremos no details
+        image: '', // A busca básica do BGG XML2 não retorna thumb, pegaremos no details
       }));
 
       return res.json({ games });
     } else {
       const token = process.env.LUDOPEDIA_ACCESS_TOKEN;
       const ludopediaTipo = gameType === 'expansion' ? 'e' : 'b';
-      
+
       let url = `https://ludopedia.com.br/api/v1/jogos?tp_jogo=${ludopediaTipo}`;
       if (query) url += `&search=${encodeURIComponent(query as string)}`;
       if (baseGameId) url += `&id_jogo_base=${baseGameId}`;
 
       const response = await axios.get(url, {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       const games = (response.data.jogos || []).map((jogo: any) => ({
         id: `ludo-${jogo.id_jogo}`,
         sourceId: jogo.id_jogo,
         name: jogo.nm_jogo,
-        image: jogo.thumb || jogo.link_imagem || ''
+        image: jogo.thumb || jogo.link_imagem || '',
       }));
 
       return res.json({ games });
@@ -68,8 +69,6 @@ export const searchGames = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Erro ao buscar jogos externos' });
   }
 };
-
-
 
 export const getGameDetails = async (req: Request, res: Response) => {
   const { id } = req.params;
@@ -81,16 +80,16 @@ export const getGameDetails = async (req: Request, res: Response) => {
 
   try {
     if (source === 'bgg') {
-      const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: "" });
+      const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '' });
       // Remover o prefixo 'bgg-' caso tenha vindo junto
       const cleanId = (id as string).replace('bgg-', '');
-      
+
       const detailsRes = await axios.get(`https://boardgamegeek.com/xmlapi2/thing?id=${cleanId}`);
       const detailsData = parser.parse(detailsRes.data);
-      
+
       let item = detailsData.items?.item;
       if (!item) return res.status(404).json({ error: 'Jogo não encontrado no BGG' });
-      
+
       const gameDetails = {
         id: `bgg-${item.id}`,
         sourceId: item.id,
@@ -99,7 +98,7 @@ export const getGameDetails = async (req: Request, res: Response) => {
         description: item.description || '',
         playtime: item.playingtime?.value || 'N/A',
         minPlayers: item.minplayers?.value || null,
-        maxPlayers: item.maxplayers?.value || null
+        maxPlayers: item.maxplayers?.value || null,
       };
 
       return res.json({ game: gameDetails });
@@ -109,8 +108,8 @@ export const getGameDetails = async (req: Request, res: Response) => {
 
       const response = await axios.get(`https://ludopedia.com.br/api/v1/jogos/${cleanId}`, {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       const jogo = response.data.jogo || response.data;
@@ -123,7 +122,7 @@ export const getGameDetails = async (req: Request, res: Response) => {
         description: jogo.ds_jogo || '',
         playtime: jogo.vl_tempo_jogo || 'N/A',
         minPlayers: jogo.qt_jogadores_min || null,
-        maxPlayers: jogo.qt_jogadores_max || null
+        maxPlayers: jogo.qt_jogadores_max || null,
       };
 
       return res.json({ game: gameDetails });

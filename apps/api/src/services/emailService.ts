@@ -34,7 +34,7 @@ export const emailService = {
         from: 'Vamos Jogar <onboarding@resend.dev>', // Usando dominio de teste do resend
         to: [toEmail],
         subject: `Lembrete: Votação Pendente - ${eventTitle}`,
-        html: htmlContent
+        html: htmlContent,
       });
 
       if (error) {
@@ -47,5 +47,5 @@ export const emailService = {
       console.error('Falha ao disparar email:', err);
       return { success: false, error: err };
     }
-  }
+  },
 };

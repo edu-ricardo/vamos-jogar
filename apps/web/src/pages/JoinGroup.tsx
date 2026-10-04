@@ -23,9 +23,9 @@ export const JoinGroup = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${idToken}`
+            Authorization: `Bearer ${idToken}`,
           },
-          body: JSON.stringify({ inviteToken: token })
+          body: JSON.stringify({ inviteToken: token }),
         });
 
         const data = await response.json();
@@ -46,11 +46,30 @@ export const JoinGroup = () => {
   }, [user, token, navigate]);
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', alignItems: 'center', justifyContent: 'center' }}>
-      <div style={{ background: 'rgba(20,20,22,0.8)', padding: '40px', borderRadius: '12px', border: '1px solid #333', textAlign: 'center' }}>
+    <div
+      style={{
+        display: 'flex',
+        minHeight: '100vh',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <div
+        style={{
+          background: 'rgba(20,20,22,0.8)',
+          padding: '40px',
+          borderRadius: '12px',
+          border: '1px solid #333',
+          textAlign: 'center',
+        }}
+      >
         <h2>Entrando no Grupo</h2>
         <p style={{ marginTop: '20px', color: '#a1a1aa' }}>{status}</p>
-        <button onClick={() => navigate('/')} className="btn-primary" style={{ marginTop: '20px', padding: '10px 20px' }}>
+        <button
+          onClick={() => navigate('/')}
+          className="btn-primary"
+          style={{ marginTop: '20px', padding: '10px 20px' }}
+        >
           Voltar ao Início
         </button>
       </div>

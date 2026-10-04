@@ -25,15 +25,18 @@ export const joinGroup = async (req: Request, res: Response) => {
     }
 
     await groupDoc.ref.update({
-      members: [...(groupData.members || []), uid]
+      members: [...(groupData.members || []), uid],
     });
 
     const userRecord = await auth.getUser(uid);
     const userName = userRecord.displayName || 'Usuário ' + uid.substring(0, 4);
 
-    await groupDoc.ref.collection('members').doc(uid).set({
-      name: userName
-    }, { merge: true });
+    await groupDoc.ref.collection('members').doc(uid).set(
+      {
+        name: userName,
+      },
+      { merge: true },
+    );
 
     return res.json({ success: true, groupId: groupDoc.id, groupName: groupData.name });
   } catch (error) {

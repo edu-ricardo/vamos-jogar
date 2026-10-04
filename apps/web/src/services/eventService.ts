@@ -1,4 +1,14 @@
-import { collection, doc, addDoc, getDocs, getDoc, updateDoc, query, orderBy, serverTimestamp } from 'firebase/firestore';
+import {
+  collection,
+  doc,
+  addDoc,
+  getDocs,
+  getDoc,
+  updateDoc,
+  query,
+  orderBy,
+  serverTimestamp,
+} from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export interface EventDateOption {
@@ -46,7 +56,13 @@ export interface Event {
 }
 
 export const eventService = {
-  createEvent: async (groupId: string, creatorId: string, title: string, dateOptions: EventDateOption[], locationOptions: EventLocationOption[]): Promise<string> => {
+  createEvent: async (
+    groupId: string,
+    creatorId: string,
+    title: string,
+    dateOptions: EventDateOption[],
+    locationOptions: EventLocationOption[],
+  ): Promise<string> => {
     try {
       const eventRef = await addDoc(collection(db, `groups/${groupId}/events`), {
         groupId,
@@ -59,11 +75,11 @@ export const eventService = {
         votesDate: {},
         votesLocation: {},
         votesGames: {},
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
       });
       return eventRef.id;
     } catch (err) {
-      console.error("Erro ao criar evento:", err);
+      console.error('Erro ao criar evento:', err);
       throw err;
     }
   },
@@ -72,9 +88,9 @@ export const eventService = {
     try {
       const q = query(collection(db, `groups/${groupId}/events`), orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Event);
     } catch (err) {
-      console.error("Erro ao buscar eventos:", err);
+      console.error('Erro ao buscar eventos:', err);
       throw err;
     }
   },
@@ -83,20 +99,26 @@ export const eventService = {
     try {
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
       const snapshot = await getDoc(docRef);
-      if (!snapshot.exists()) throw new Error("Evento não encontrado");
+      if (!snapshot.exists()) throw new Error('Evento não encontrado');
       return { id: snapshot.id, ...snapshot.data() } as Event;
     } catch (err) {
-      console.error("Erro ao buscar detalhes do evento:", err);
+      console.error('Erro ao buscar detalhes do evento:', err);
       throw err;
     }
   },
 
-  voteDateLocation: async (groupId: string, eventId: string, userId: string, dateOptionId: string, locationOptionId: string): Promise<void> => {
+  voteDateLocation: async (
+    groupId: string,
+    eventId: string,
+    userId: string,
+    dateOptionId: string,
+    locationOptionId: string,
+  ): Promise<void> => {
     try {
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
       const snapshot = await getDoc(docRef);
-      if (!snapshot.exists()) throw new Error("Evento não encontrado");
-      
+      if (!snapshot.exists()) throw new Error('Evento não encontrado');
+
       const data = snapshot.data();
       const votesDate = data.votesDate || {};
       const votesLocation = data.votesLocation || {};
@@ -106,10 +128,10 @@ export const eventService = {
 
       await updateDoc(docRef, {
         votesDate,
-        votesLocation
+        votesLocation,
       });
     } catch (err) {
-      console.error("Erro ao computar voto:", err);
+      console.error('Erro ao computar voto:', err);
       throw err;
     }
   },
@@ -117,18 +139,21 @@ export const eventService = {
   fetchFavoriteLocations: async (uid: string): Promise<FavoriteLocation[]> => {
     try {
       const snapshot = await getDocs(collection(db, `users/${uid}/favoriteLocations`));
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FavoriteLocation));
+      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as FavoriteLocation);
     } catch (err) {
-      console.error("Erro ao buscar locais favoritos:", err);
+      console.error('Erro ao buscar locais favoritos:', err);
       return [];
     }
   },
 
-  saveFavoriteLocation: async (uid: string, location: Omit<FavoriteLocation, 'id'>): Promise<void> => {
+  saveFavoriteLocation: async (
+    uid: string,
+    location: Omit<FavoriteLocation, 'id'>,
+  ): Promise<void> => {
     try {
       await addDoc(collection(db, `users/${uid}/favoriteLocations`), location);
     } catch (err) {
-      console.error("Erro ao salvar local favorito:", err);
+      console.error('Erro ao salvar local favorito:', err);
       throw err;
     }
   },
@@ -138,96 +163,119 @@ export const eventService = {
       const { deleteDoc } = await import('firebase/firestore');
       await deleteDoc(doc(db, `groups/${groupId}/events`, eventId));
     } catch (err) {
-      console.error("Erro ao excluir evento:", err);
+      console.error('Erro ao excluir evento:', err);
       throw err;
     }
   },
 
-  updateEvent: async (groupId: string, eventId: string, title: string, dateOptions: EventDateOption[], locationOptions: EventLocationOption[]): Promise<void> => {
+  updateEvent: async (
+    groupId: string,
+    eventId: string,
+    title: string,
+    dateOptions: EventDateOption[],
+    locationOptions: EventLocationOption[],
+  ): Promise<void> => {
     try {
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
       await updateDoc(docRef, {
         title,
         dateOptions,
-        locationOptions
+        locationOptions,
       });
     } catch (err) {
-      console.error("Erro ao atualizar evento:", err);
+      console.error('Erro ao atualizar evento:', err);
       throw err;
     }
   },
 
-  advanceToGamesVoting: async (groupId: string, eventId: string, finalDateId: string, finalLocationId: string): Promise<void> => {
+  advanceToGamesVoting: async (
+    groupId: string,
+    eventId: string,
+    finalDateId: string,
+    finalLocationId: string,
+  ): Promise<void> => {
     try {
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
       await updateDoc(docRef, {
         status: 'VOTING_GAMES',
         finalDateId,
-        finalLocationId
+        finalLocationId,
       });
     } catch (err) {
-      console.error("Erro ao avançar votação:", err);
+      console.error('Erro ao avançar votação:', err);
       throw err;
     }
   },
 
-  suggestGames: async (groupId: string, eventId: string, games: EventGameOption[]): Promise<void> => {
+  suggestGames: async (
+    groupId: string,
+    eventId: string,
+    games: EventGameOption[],
+  ): Promise<void> => {
     try {
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
       const snapshot = await getDoc(docRef);
-      if (!snapshot.exists()) throw new Error("Evento não encontrado");
+      if (!snapshot.exists()) throw new Error('Evento não encontrado');
 
       const existingGames: EventGameOption[] = snapshot.data().gameOptions || [];
       // Combine avoiding duplicates by game ID
-      const newGamesMap = new Map(existingGames.map(g => [g.id, g]));
+      const newGamesMap = new Map(existingGames.map((g) => [g.id, g]));
       for (const g of games) {
         if (!newGamesMap.has(g.id)) {
           newGamesMap.set(g.id, g);
         }
       }
-      
+
       await updateDoc(docRef, {
-        gameOptions: Array.from(newGamesMap.values())
+        gameOptions: Array.from(newGamesMap.values()),
       });
     } catch (err) {
-      console.error("Erro ao sugerir jogos:", err);
+      console.error('Erro ao sugerir jogos:', err);
       throw err;
     }
   },
 
-  voteGames: async (groupId: string, eventId: string, userId: string, gameIds: string[]): Promise<void> => {
+  voteGames: async (
+    groupId: string,
+    eventId: string,
+    userId: string,
+    gameIds: string[],
+  ): Promise<void> => {
     try {
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
       const snapshot = await getDoc(docRef);
-      if (!snapshot.exists()) throw new Error("Evento não encontrado");
+      if (!snapshot.exists()) throw new Error('Evento não encontrado');
 
       const data = snapshot.data();
       const votesGames = data.votesGames || {};
       votesGames[userId] = gameIds;
 
       await updateDoc(docRef, {
-        votesGames
+        votesGames,
       });
     } catch (err) {
-      console.error("Erro ao votar em jogos:", err);
+      console.error('Erro ao votar em jogos:', err);
       throw err;
     }
   },
 
-  forceReminders: async (groupId: string, eventId: string): Promise<{ success: boolean, message: string }> => {
+  forceReminders: async (
+    groupId: string,
+    eventId: string,
+  ): Promise<{ success: boolean; message: string }> => {
     try {
       const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
       const response = await fetch(`${API_URL}/api/cron/force-event-reminders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupId, eventId })
+        body: JSON.stringify({ groupId, eventId }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Erro ao notificar atrasados');
       return data;
     } catch (err) {
-      console.error("Erro ao notificar:", err);
+      console.error('Erro ao notificar:', err);
       throw err;
     }
-  }
+  },
 };

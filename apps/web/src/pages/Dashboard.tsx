@@ -7,7 +7,18 @@ import { eventService, type Event } from '../services/eventService';
 export const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [upcomingEvents, setUpcomingEvents] = useState<{event: Event, groupName: string, groupId: string, displayDate: string, displayTime: string, displayEndTime: string, displayLocation: string, isDateConfirmed: boolean}[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<
+    {
+      event: Event;
+      groupName: string;
+      groupId: string;
+      displayDate: string;
+      displayTime: string;
+      displayEndTime: string;
+      displayLocation: string;
+      isDateConfirmed: boolean;
+    }[]
+  >([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
 
   useEffect(() => {
@@ -15,51 +26,64 @@ export const Dashboard = () => {
       if (!user) return;
       try {
         const groups = await groupService.fetchUserGroups(user.uid);
-        let allFutureEvents: {event: Event, groupName: string, groupId: string, displayDate: string, displayTime: string, displayEndTime: string, displayLocation: string, isDateConfirmed: boolean}[] = [];
-        
+        let allFutureEvents: {
+          event: Event;
+          groupName: string;
+          groupId: string;
+          displayDate: string;
+          displayTime: string;
+          displayEndTime: string;
+          displayLocation: string;
+          isDateConfirmed: boolean;
+        }[] = [];
+
         const now = new Date();
         now.setHours(0, 0, 0, 0); // Considerar eventos a partir de hoje
 
         for (const group of groups) {
           const events = await eventService.fetchGroupEvents(group.id);
-          const futureEvents = events.filter((e: Event) => {
-            const dateStr = e.finalDateId 
-              ? e.dateOptions.find(d => d.id === e.finalDateId)?.date 
-              : e.dateOptions[0]?.date;
-            
-            if (!dateStr) return false;
-            
-            const eventDate = new Date(dateStr);
-            return eventDate >= now;
-          }).map((e: Event) => {
-            const dateObj = e.finalDateId 
-              ? e.dateOptions.find(d => d.id === e.finalDateId)
-              : e.dateOptions[0];
-            const locObj = e.finalLocationId 
-              ? e.locationOptions.find(l => l.id === e.finalLocationId)
-              : e.locationOptions[0];
-            
-            return {
-              event: e,
-              groupName: group.name,
-              groupId: group.id,
-              displayDate: dateObj?.date || '',
-              displayTime: dateObj?.startTime || '',
-              displayEndTime: dateObj?.endTime || '',
-              displayLocation: locObj?.name || 'Local a definir',
-              isDateConfirmed: e.status === 'VOTING_GAMES' || e.status === 'CONFIRMED'
-            };
-          });
-          
+          const futureEvents = events
+            .filter((e: Event) => {
+              const dateStr = e.finalDateId
+                ? e.dateOptions.find((d) => d.id === e.finalDateId)?.date
+                : e.dateOptions[0]?.date;
+
+              if (!dateStr) return false;
+
+              const eventDate = new Date(dateStr);
+              return eventDate >= now;
+            })
+            .map((e: Event) => {
+              const dateObj = e.finalDateId
+                ? e.dateOptions.find((d) => d.id === e.finalDateId)
+                : e.dateOptions[0];
+              const locObj = e.finalLocationId
+                ? e.locationOptions.find((l) => l.id === e.finalLocationId)
+                : e.locationOptions[0];
+
+              return {
+                event: e,
+                groupName: group.name,
+                groupId: group.id,
+                displayDate: dateObj?.date || '',
+                displayTime: dateObj?.startTime || '',
+                displayEndTime: dateObj?.endTime || '',
+                displayLocation: locObj?.name || 'Local a definir',
+                isDateConfirmed: e.status === 'VOTING_GAMES' || e.status === 'CONFIRMED',
+              };
+            });
+
           allFutureEvents = [...allFutureEvents, ...futureEvents];
         }
 
         // Ordenar do mais próximo pro mais distante
-        allFutureEvents.sort((a, b) => new Date(a.displayDate).getTime() - new Date(b.displayDate).getTime());
-        
+        allFutureEvents.sort(
+          (a, b) => new Date(a.displayDate).getTime() - new Date(b.displayDate).getTime(),
+        );
+
         setUpcomingEvents(allFutureEvents);
       } catch (err) {
-        console.error("Erro ao carregar eventos globais:", err);
+        console.error('Erro ao carregar eventos globais:', err);
       } finally {
         setLoadingEvents(false);
       }
@@ -82,81 +106,135 @@ export const Dashboard = () => {
     } else {
       const h = parseInt(item.displayTime.split(':')[0]);
       const m = item.displayTime.split(':')[1];
-      const endH = Math.min(23, h + 4).toString().padStart(2, '0');
+      const endH = Math.min(23, h + 4)
+        .toString()
+        .padStart(2, '0');
       endTime = endH + m + '00';
     }
 
     const dates = `${startDate}T${startTime}/${startDate}T${endTime}`;
-    
+
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`;
   };
 
   return (
     <div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '40px' }}>
-        <button 
-          onClick={() => navigate('/ludoteca')} 
-          className="btn-primary" 
-          style={{ width: '100%', padding: '20px', fontSize: '1.2rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px', color: '#fff' }}
+        <button
+          onClick={() => navigate('/ludoteca')}
+          className="btn-primary"
+          style={{
+            width: '100%',
+            padding: '20px',
+            fontSize: '1.2rem',
+            background: 'transparent',
+            border: '1px solid #fff',
+            borderRadius: '12px',
+            color: '#fff',
+          }}
         >
           Ludoteca
         </button>
-        <button 
-          onClick={() => navigate('/grupos')} 
-          className="btn-primary" 
-          style={{ width: '100%', padding: '20px', fontSize: '1.2rem', background: 'transparent', border: '1px solid #fff', borderRadius: '12px', color: '#fff' }}
+        <button
+          onClick={() => navigate('/grupos')}
+          className="btn-primary"
+          style={{
+            width: '100%',
+            padding: '20px',
+            fontSize: '1.2rem',
+            background: 'transparent',
+            border: '1px solid #fff',
+            borderRadius: '12px',
+            color: '#fff',
+          }}
         >
           Grupos
         </button>
       </div>
 
-      <section style={{ border: '1px solid #333', borderRadius: '12px', padding: '20px', background: 'rgba(255,255,255,0.02)' }}>
-        <h2 style={{ marginTop: 0, borderBottom: '1px solid #333', paddingBottom: '15px', marginBottom: '15px' }}>Próximos Eventos</h2>
-        
+      <section
+        style={{
+          border: '1px solid #333',
+          borderRadius: '12px',
+          padding: '20px',
+          background: 'rgba(255,255,255,0.02)',
+        }}
+      >
+        <h2
+          style={{
+            marginTop: 0,
+            borderBottom: '1px solid #333',
+            paddingBottom: '15px',
+            marginBottom: '15px',
+          }}
+        >
+          Próximos Eventos
+        </h2>
+
         {loadingEvents ? (
           <p style={{ color: '#a1a1aa', textAlign: 'center' }}>Buscando eventos...</p>
         ) : upcomingEvents.length === 0 ? (
-          <p style={{ color: '#a1a1aa', textAlign: 'center' }}>Nenhum evento agendado para o futuro.</p>
+          <p style={{ color: '#a1a1aa', textAlign: 'center' }}>
+            Nenhum evento agendado para o futuro.
+          </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {upcomingEvents.map(item => (
-              <div 
-                key={item.event.id} 
+            {upcomingEvents.map((item) => (
+              <div
+                key={item.event.id}
                 onClick={() => navigate(`/event/${item.groupId}/${item.event.id}`)}
-                style={{ 
-                  padding: '15px', 
-                  border: '1px solid #444', 
-                  borderRadius: '8px', 
+                style={{
+                  padding: '15px',
+                  border: '1px solid #444',
+                  borderRadius: '8px',
                   cursor: 'pointer',
                   background: 'rgba(0,0,0,0.3)',
-                  transition: 'background 0.2s'
+                  transition: 'background 0.2s',
                 }}
-                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                onMouseOut={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.3)'}
+                onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
+                onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.3)')}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '5px',
+                  }}
+                >
                   <h4 style={{ margin: 0 }}>{item.groupName}</h4>
                   <span style={{ fontSize: '0.8rem', color: '#7e22ce', fontWeight: 'bold' }}>
-                    {item.displayDate ? new Date(item.displayDate + 'T00:00:00').toLocaleDateString('pt-BR') : ''} às {item.displayTime}
+                    {item.displayDate
+                      ? new Date(item.displayDate + 'T00:00:00').toLocaleDateString('pt-BR')
+                      : ''}{' '}
+                    às {item.displayTime}
                   </span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                  <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.9rem' }}>Local: {item.displayLocation}</p>
-                  
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-end',
+                  }}
+                >
+                  <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.9rem' }}>
+                    Local: {item.displayLocation}
+                  </p>
+
                   {item.isDateConfirmed && (
-                    <button 
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         window.open(generateGoogleCalendarUrl(item), '_blank');
                       }}
-                      style={{ 
-                        background: 'transparent', 
-                        border: '1px solid #34d399', 
-                        color: '#34d399', 
-                        padding: '4px 8px', 
-                        borderRadius: '6px', 
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid #34d399',
+                        color: '#34d399',
+                        padding: '4px 8px',
+                        borderRadius: '6px',
                         fontSize: '0.8rem',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
                       }}
                     >
                       + Agenda
