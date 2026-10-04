@@ -148,3 +148,20 @@ export const toEventGameRecords = (eventId: string, event: Data, userIds: Record
     suggester: userIds[game.suggesterId] ?? '',
     suggesterName: game.suggesterName ?? '',
   }));
+
+// Contas deixadas de fora de propósito (--exclude). Um e-mail que não existe no backup é erro,
+// para um erro de digitação não passar despercebido.
+export const excludeUsers = <T extends { users: ExportedUser[] }>(
+  backup: T,
+  emails: string[],
+): T => {
+  const wanted = new Set(emails.map((e) => e.trim().toLowerCase()));
+  const found = new Set(backup.users.map((u) => (u.email ?? '').toLowerCase()));
+  const missing = [...wanted].filter((email) => !found.has(email));
+  if (missing.length > 0)
+    throw new Error(`E-mail(s) para excluir não estão no backup: ${missing.join(', ')}`);
+  return {
+    ...backup,
+    users: backup.users.filter((u) => !wanted.has((u.email ?? '').toLowerCase())),
+  };
+};

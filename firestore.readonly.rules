@@ -1,0 +1,50 @@
+rules_version = '2';
+
+// Regras da virada para o PocketBase: o Firebase fica somente leitura. As leituras são as mesmas
+// do firestore.rules; nenhuma escrita é aceita. Para voltar ao normal, publique firestore.rules.
+// Publicar: firebase deploy --only firestore:rules --config firebase.readonly.json --project prod
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isMember(groupId) {
+      return signedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    match /groups/{groupId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+
+      match /members/{memberId} {
+        allow read: if isMember(groupId);
+      }
+
+      match /events/{eventId} {
+        allow read: if isMember(groupId);
+      }
+    }
+
+    match /users/{uid} {
+      allow read: if isSelf(uid);
+
+      match /collection/{gameId} {
+        allow read: if signedIn();
+      }
+
+      match /favoriteLocations/{locationId} {
+        allow read: if isSelf(uid);
+      }
+    }
+  }
+}

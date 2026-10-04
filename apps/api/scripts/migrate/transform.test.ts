@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deserialize, indexBackup, toGameRecord, toVoteRecords } from './transform';
+import { deserialize, excludeUsers, indexBackup, toGameRecord, toVoteRecords } from './transform';
 
 describe('deserialize', () => {
   it('converte datas do backup em texto ISO, inclusive aninhadas', () => {
@@ -83,5 +83,26 @@ describe('toVoteRecords', () => {
       { event: 'ev1', user: 'pb-a', dateOptionId: 'd1', locationOptionId: 'l1', gameIds: null },
       { event: 'ev1', user: 'pb-b', dateOptionId: '', locationOptionId: '', gameIds: ['ludo-1'] },
     ]);
+  });
+});
+
+describe('excludeUsers', () => {
+  const user = (uid: string, email: string) => ({
+    uid,
+    email,
+    emailVerified: true,
+    disabled: false,
+    providers: [],
+    providerData: [],
+  });
+  const backup = { documents: [], users: [user('a', 'ana@x.test'), user('b', 'Bia@X.test')] };
+
+  it('remove as contas pelo e-mail, sem diferenciar maiúsculas', () => {
+    expect(excludeUsers(backup, [' bia@x.test ']).users.map((u) => u.uid)).toEqual(['a']);
+    expect(excludeUsers(backup, []).users).toHaveLength(2);
+  });
+
+  it('e-mail que não está no backup é erro (protege contra erro de digitação)', () => {
+    expect(() => excludeUsers(backup, ['bia@x.tst'])).toThrow('bia@x.tst');
   });
 });
