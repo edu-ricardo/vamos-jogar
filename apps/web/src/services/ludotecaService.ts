@@ -1,6 +1,6 @@
-import { collection, doc, setDoc, deleteDoc, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { apiRequest } from './apiClient';
+import { createFirebaseLudotecaRepository } from './firebase/ludotecaRepository';
 
 export interface Game {
   id: string;
@@ -21,16 +21,15 @@ export type GameSource = 'ludopedia' | 'bgg';
 export const getGameSource = (gameId: string): GameSource =>
   gameId.startsWith('bgg-') ? 'bgg' : 'ludopedia';
 
+// Acesso à ludoteca de cada usuário; a implementação atual é o Firestore
+export interface LudotecaRepository {
+  fetchUserCollection(uid: string): Promise<Game[]>;
+  addGameToCollection(uid: string, game: Game): Promise<void>;
+  removeGameFromCollection(uid: string, gameId: string): Promise<void>;
+}
+
 export const ludotecaService = {
-  fetchUserCollection: async (uid: string): Promise<Game[]> => {
-    try {
-      const snap = await getDocs(collection(db, 'users', uid, 'collection'));
-      return snap.docs.map((doc) => doc.data() as Game);
-    } catch (err) {
-      console.error('Erro ao buscar coleção no Firestore:', err);
-      throw err;
-    }
-  },
+  ...createFirebaseLudotecaRepository(db),
 
   searchExternalGames: async (
     query: string,
@@ -66,24 +65,6 @@ export const ludotecaService = {
       return data.game;
     } catch (err) {
       console.error('Erro ao buscar detalhes do jogo via API externa:', err);
-      throw err;
-    }
-  },
-
-  addGameToCollection: async (uid: string, game: Game): Promise<void> => {
-    try {
-      await setDoc(doc(db, 'users', uid, 'collection', game.id), game);
-    } catch (err) {
-      console.error('Erro ao salvar jogo na coleção:', err);
-      throw err;
-    }
-  },
-
-  removeGameFromCollection: async (uid: string, gameId: string): Promise<void> => {
-    try {
-      await deleteDoc(doc(db, 'users', uid, 'collection', gameId));
-    } catch (err) {
-      console.error('Erro ao remover jogo da coleção:', err);
       throw err;
     }
   },

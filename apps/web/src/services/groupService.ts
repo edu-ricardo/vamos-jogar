@@ -1,18 +1,6 @@
-import {
-  collection,
-  doc,
-  addDoc,
-  getDocs,
-  getDoc,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  serverTimestamp,
-} from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { apiRequest } from './apiClient';
+import { createFirebaseGroupRepository } from './firebase/groupRepository';
 
 export interface Group {
   id: string;
@@ -21,7 +9,24 @@ export interface Group {
   inviteToken: string;
 }
 
+export interface GroupMember {
+  id: string;
+  name: string;
+}
+
+// Acesso aos dados de grupos; a implementação atual é o Firestore, trocável por outro backend
+export interface GroupRepository {
+  fetchUserGroups(uid: string): Promise<Group[]>;
+  updateMemberName(groupId: string, userId: string, newName: string): Promise<void>;
+  fetchGroupDetails(groupId: string): Promise<Group | null>;
+  fetchGroupMembers(groupId: string): Promise<GroupMember[]>;
+  removeMember(groupId: string, userId: string): Promise<void>;
+  createGroup(uid: string, groupName: string, userName?: string): Promise<void>;
+}
+
 export const groupService = {
+  ...createFirebaseGroupRepository(db),
+
   // Entrar por convite passa pela API, que valida o token e adiciona o membro
   joinGroup: (inviteToken: string, idToken: string) =>
     apiRequest<{ groupId: string; groupName: string }>('/api/groups/join', {
@@ -30,89 +35,4 @@ export const groupService = {
       body: { inviteToken },
       fallbackError: 'Erro ao processar o convite.',
     }),
-
-  fetchUserGroups: async (uid: string): Promise<Group[]> => {
-    try {
-      const q = query(collection(db, 'groups'), where('members', 'array-contains', uid));
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Group[];
-    } catch (err) {
-      console.error('Erro ao buscar grupos no Firestore:', err);
-      throw err;
-    }
-  },
-
-  updateMemberName: async (groupId: string, userId: string, newName: string): Promise<void> => {
-    try {
-      const memberRef = doc(db, 'groups', groupId, 'members', userId);
-      await setDoc(memberRef, { name: newName }, { merge: true });
-    } catch (err) {
-      console.error('Erro ao atualizar nome do membro no grupo:', err);
-      throw err;
-    }
-  },
-
-  fetchGroupDetails: async (groupId: string): Promise<Group | null> => {
-    try {
-      const docRef = doc(db, 'groups', groupId);
-      const snapshot = await getDoc(docRef);
-      if (!snapshot.exists()) return null;
-      return { id: snapshot.id, ...snapshot.data() } as Group;
-    } catch (err) {
-      console.error('Erro ao buscar detalhes do grupo:', err);
-      throw err;
-    }
-  },
-
-  fetchGroupMembers: async (groupId: string): Promise<{ id: string; name: string }[]> => {
-    try {
-      const snapshot = await getDocs(collection(db, 'groups', groupId, 'members'));
-      return snapshot.docs.map((doc) => ({
-        id: doc.id,
-        name: doc.data().name || 'Usuário',
-      }));
-    } catch (err) {
-      console.error('Erro ao buscar membros do grupo:', err);
-      throw err;
-    }
-  },
-
-  removeMember: async (groupId: string, userId: string): Promise<void> => {
-    try {
-      await deleteDoc(doc(db, 'groups', groupId, 'members', userId));
-
-      const groupRef = doc(db, 'groups', groupId);
-      const groupSnap = await getDoc(groupRef);
-      if (groupSnap.exists()) {
-        const data = groupSnap.data();
-        const newMembers = (data.members || []).filter((id: string) => id !== userId);
-        await updateDoc(groupRef, { members: newMembers });
-      }
-    } catch (err) {
-      console.error('Erro ao remover membro:', err);
-      throw err;
-    }
-  },
-
-  createGroup: async (uid: string, groupName: string, userName?: string): Promise<void> => {
-    try {
-      const token = crypto.randomUUID();
-      const groupRef = await addDoc(collection(db, 'groups'), {
-        name: groupName,
-        adminId: uid,
-        members: [uid],
-        inviteToken: token,
-        createdAt: serverTimestamp(),
-      });
-
-      const memberRef = doc(db, 'groups', groupRef.id, 'members', uid);
-      await setDoc(memberRef, { name: userName || 'Admin' });
-    } catch (err) {
-      console.error('Erro ao criar grupo no Firestore:', err);
-      throw err;
-    }
-  },
 };
