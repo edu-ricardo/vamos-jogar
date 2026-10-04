@@ -14,7 +14,9 @@ export const createFirebaseLudotecaRepository = (db: Firestore): LudotecaReposit
 
   addGameToCollection: async (uid: string, game: Game): Promise<void> => {
     try {
-      await setDoc(doc(db, 'users', uid, 'collection', game.id), game);
+      // O Firestore recusa campos undefined (ex.: jogadores em branco); campo vazio simplesmente não é gravado
+      const data = Object.fromEntries(Object.entries(game).filter(([, v]) => v !== undefined));
+      await setDoc(doc(db, 'users', uid, 'collection', game.id), data);
     } catch (err) {
       console.error('Erro ao salvar jogo na coleção:', err);
       throw err;

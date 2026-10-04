@@ -180,4 +180,19 @@ describe('LudotecaRepository', () => {
     await ludotecaAs('bia').removeGameFromCollection('bia', 'ludo-1');
     expect(await ludotecaAs('bia').fetchUserCollection('bia')).toEqual([]);
   });
+
+  // A tela da Ludoteca envia minPlayers/maxPlayers como undefined quando o campo fica vazio
+  it('aceita jogo sem número de jogadores', async () => {
+    await ludotecaAs('bia').addGameToCollection('bia', {
+      id: 'bgg-2',
+      sourceId: '2',
+      name: 'Azul',
+      image: '',
+      playtime: '45',
+      minPlayers: undefined,
+      maxPlayers: undefined,
+      observation: '',
+    });
+    expect(await ludotecaAs('bia').fetchUserCollection('bia')).toHaveLength(1);
+  });
 });
