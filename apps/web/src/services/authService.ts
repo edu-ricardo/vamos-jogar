@@ -1,5 +1,4 @@
-import { auth } from '../lib/firebase';
-import { createFirebaseAuthGateway } from './firebase/authGateway';
+import { backend } from './backend';
 
 // Usuário como o app enxerga, independente do provedor de login
 export interface AppUser {
@@ -20,4 +19,4 @@ export interface AuthGateway {
   logout(): Promise<void>;
 }
 
-export const authService: AuthGateway = createFirebaseAuthGateway(auth);
+export const authService: AuthGateway = backend.auth;

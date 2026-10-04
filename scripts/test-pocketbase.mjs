@@ -55,6 +55,7 @@ try {
       'run',
       'tests/repositories.pocketbase.test.ts',
       'tests/pocketbase.rules.test.ts',
+      'tests/pocketbase.auth.test.ts',
       '--no-file-parallelism',
     ],
     {

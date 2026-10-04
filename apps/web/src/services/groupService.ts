@@ -1,6 +1,5 @@
-import { db } from '../lib/firebase';
+import { backend } from './backend';
 import { apiRequest } from './apiClient';
-import { createFirebaseGroupRepository } from './firebase/groupRepository';
 
 export interface Group {
   id: string;
@@ -25,7 +24,7 @@ export interface GroupRepository {
 }
 
 export const groupService = {
-  ...createFirebaseGroupRepository(db),
+  ...backend.groups,
 
   // Entrar por convite passa pela API, que valida o token e adiciona o membro
   joinGroup: (inviteToken: string, idToken: string) =>

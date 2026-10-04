@@ -1,6 +1,5 @@
-import { db } from '../lib/firebase';
+import { backend } from './backend';
 import { apiRequest } from './apiClient';
-import { createFirebaseLudotecaRepository } from './firebase/ludotecaRepository';
 
 export interface Game {
   id: string;
@@ -29,7 +28,7 @@ export interface LudotecaRepository {
 }
 
 export const ludotecaService = {
-  ...createFirebaseLudotecaRepository(db),
+  ...backend.ludoteca,
 
   searchExternalGames: async (
     query: string,

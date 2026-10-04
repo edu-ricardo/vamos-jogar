@@ -1,6 +1,5 @@
-import { db } from '../lib/firebase';
+import { backend } from './backend';
 import { apiRequest } from './apiClient';
-import { createFirebaseEventRepository } from './firebase/eventRepository';
 
 export interface EventDateOption {
   id: string;
@@ -87,7 +86,7 @@ export interface EventRepository {
 }
 
 export const eventService = {
-  ...createFirebaseEventRepository(db),
+  ...backend.events,
 
   forceReminders: async (
     groupId: string,
