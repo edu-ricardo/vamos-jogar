@@ -21,6 +21,8 @@ export interface ExportedUser {
   emailVerified: boolean;
   disabled: boolean;
   providers: string[];
+  // Id da conta em cada provedor (ex.: google.com): liga o login Google à conta migrada
+  providerData: { providerId: string; uid: string }[];
   createdAt?: string;
   lastSignInAt?: string;
 }
@@ -77,6 +79,7 @@ export const exportAuthUsers = async (auth: Auth): Promise<ExportedUser[]> => {
         emailVerified: user.emailVerified,
         disabled: user.disabled,
         providers: user.providerData.map((p) => p.providerId),
+        providerData: user.providerData.map((p) => ({ providerId: p.providerId, uid: p.uid })),
         createdAt: user.metadata.creationTime,
         lastSignInAt: user.metadata.lastSignInTime,
       });

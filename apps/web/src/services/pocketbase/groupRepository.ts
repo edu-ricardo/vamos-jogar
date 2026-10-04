@@ -41,6 +41,7 @@ export const createPocketBaseGroupRepository = (pb: PocketBase): GroupRepository
     fetchGroupMembers: async (groupId): Promise<GroupMember[]> => {
       const memberships = await pb.collection('memberships').getFullList({
         filter: pb.filter('group = {:groupId}', { groupId }),
+        sort: 'created',
       });
       return memberships.map((m) => ({ id: m.user, name: m.nickname || 'Usuário' }));
     },
