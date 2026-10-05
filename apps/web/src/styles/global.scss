@@ -171,6 +171,7 @@ input[type='radio'] {
 }
 
 .btn-back {
+  display: inline-block;
   color: var(--text-secondary);
   font-size: 0.9rem;
   padding: 0;

@@ -1,4 +1,10 @@
-import type { EventGameOption } from './eventService';
+import type { Event, EventGameOption } from './eventService';
+
+export const EVENT_STATUS_LABEL: Record<Event['status'], string> = {
+  VOTING_DATE: 'Votando data e local',
+  VOTING_GAMES: 'Votando jogos',
+  CONFIRMED: 'Confirmado',
+};
 
 export interface RankedGame {
   game: EventGameOption;

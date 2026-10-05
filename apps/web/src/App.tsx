@@ -1,3 +1,5 @@
+// Estilos globais primeiro: os estilos de cada página podem sobrescrevê-los
+import './styles/global.scss';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -11,7 +13,6 @@ import { Grupos } from './pages/Grupos';
 import { Conta } from './pages/Conta';
 import { Layout } from './components/Layout';
 import { Toaster } from 'react-hot-toast';
-import './styles/global.scss';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user } = useAuth();

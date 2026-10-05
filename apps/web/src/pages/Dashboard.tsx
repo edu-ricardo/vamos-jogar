@@ -3,13 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { groupService, type Group } from '../services/groupService';
 import { eventService, type Event } from '../services/eventService';
+import { EVENT_STATUS_LABEL } from '../services/eventResults';
 import './Dashboard.scss';
-
-const STATUS_LABEL: Record<Event['status'], string> = {
-  VOTING_DATE: 'Votando data e local',
-  VOTING_GAMES: 'Votando jogos',
-  CONFIRMED: 'Confirmado',
-};
 
 // "2026-10-09" → "out"
 const monthLabel = (date: string) =>
@@ -161,7 +156,7 @@ export const Dashboard = () => {
                       <p className="muted">
                         {item.groupName} · {item.displayTime} · {item.displayLocation}
                       </p>
-                      <span className="chip">{STATUS_LABEL[item.event.status]}</span>
+                      <span className="chip">{EVENT_STATUS_LABEL[item.event.status]}</span>
                     </div>
                   </Link>
                   {item.isDateConfirmed && (
