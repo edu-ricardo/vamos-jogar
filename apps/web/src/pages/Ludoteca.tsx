@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ludotecaService, getGameSource, type Game } from '../services/ludotecaService';
+import { filterCollection } from '../services/ludotecaFilters';
+import { Modal } from '../components/Modal';
 import toast from 'react-hot-toast';
+import './Ludoteca.scss';
+
+// Capa do jogo ou um quadro vazio quando a fonte não tem imagem
+const GameThumb = ({ game }: { game: Game }) =>
+  game.image ? (
+    <img src={game.image} alt="" className="game-thumb" loading="lazy" />
+  ) : (
+    <div className="game-thumb" aria-hidden="true" />
+  );
 
 export const Ludoteca = () => {
   const { user } = useAuth();
@@ -25,6 +36,11 @@ export const Ludoteca = () => {
   const [expSearchQuery, setExpSearchQuery] = useState('');
   const [expSearchResults, setExpSearchResults] = useState<Game[]>([]);
   const [expSearchLoading, setExpSearchLoading] = useState(false);
+
+  // Filtros da coleção
+  const [filterText, setFilterText] = useState('');
+  const [filterPlayers, setFilterPlayers] = useState('');
+  const [filterPlaytime, setFilterPlaytime] = useState('');
 
   const loadCollection = async () => {
     if (!user) return;
@@ -193,698 +209,302 @@ export const Ludoteca = () => {
     }
   };
 
-  return (
-    <div style={{ position: 'relative' }}>
-      <h1>Sua Ludoteca</h1>
-      <p style={{ color: '#a1a1aa', marginBottom: '30px' }}>
-        Pesquise e adicione jogos que você possui à sua coleção para levá-los aos grupos de
-        jogatina.
-      </p>
+  const filteredCollection = filterCollection(myCollection, {
+    text: filterText,
+    players: Number(filterPlayers) || undefined,
+    maxPlaytime: Number(filterPlaytime) || undefined,
+  });
 
-      <section
-        style={{
-          marginBottom: '50px',
-          background: 'rgba(255,255,255,0.03)',
-          padding: '20px',
-          borderRadius: '12px',
-        }}
-      >
-        <h2>Buscar Jogos</h2>
-        <form
-          onSubmit={handleSearch}
-          style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}
-        >
+  const gameFields = (
+    <div className="ludoteca-fields">
+      <div className="field">
+        <label htmlFor="game-playtime">Tempo de jogo (minutos)</label>
+        <input
+          id="game-playtime"
+          type="text"
+          value={playtime}
+          onChange={(e) => setPlaytime(e.target.value)}
+        />
+      </div>
+      <div className="ludoteca-fields-row">
+        <div className="field">
+          <label htmlFor="game-min">Mín. jogadores</label>
           <input
-            type="text"
-            placeholder="Nome do jogo (ex: Catan)..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            style={{
-              flex: 1,
-              padding: '12px',
-              borderRadius: '8px',
-              border: '1px solid #444',
-              background: 'rgba(0,0,0,0.2)',
-              color: '#fff',
-            }}
+            id="game-min"
+            type="number"
+            value={minPlayers}
+            onChange={(e) => setMinPlayers(e.target.value)}
           />
-          <select
-            value={source}
-            onChange={(e) => setSource(e.target.value as any)}
-            style={{
-              padding: '12px',
-              borderRadius: '8px',
-              border: '1px solid #444',
-              background: 'rgba(0,0,0,0.2)',
-              color: '#fff',
-            }}
-          >
-            <option value="ludopedia">Ludopedia (BR)</option>
-            <option value="bgg">BoardGameGeek (INTL)</option>
-          </select>
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={loading}
-            style={{ padding: '12px' }}
-          >
-            {loading ? 'Buscando...' : 'Pesquisar'}
-          </button>
-        </form>
-        {error && <p style={{ color: '#ef4444', marginTop: '10px' }}>{error}</p>}
+        </div>
+        <div className="field">
+          <label htmlFor="game-max">Máx. jogadores</label>
+          <input
+            id="game-max"
+            type="number"
+            value={maxPlayers}
+            onChange={(e) => setMaxPlayers(e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="field">
+        <label htmlFor="game-observation">Observações (ex: Falta um meeple, Edição KS)</label>
+        <input
+          id="game-observation"
+          type="text"
+          value={observation}
+          onChange={(e) => setObservation(e.target.value)}
+          placeholder="Sua observação sobre esta cópia..."
+        />
+      </div>
+    </div>
+  );
 
-        {searchResults.length > 0 && (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-              gap: '20px',
-              marginTop: '20px',
-            }}
-          >
-            {searchResults.map((game) => (
-              <div
-                key={game.id}
-                style={{
-                  background: '#1c1c1f',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  border: '1px solid #333',
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                <img
-                  src={game.image || 'https://via.placeholder.com/200x200?text=Sem+Imagem'}
-                  alt={game.name}
-                  style={{ width: '100%', height: '200px', objectFit: 'cover' }}
-                />
-                <div style={{ padding: '15px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <h4 style={{ margin: '0 0 5px 0' }}>{game.name}</h4>
-                  <button
-                    onClick={() => openDetailsModal(game)}
-                    className="btn-primary"
-                    style={{ marginTop: 'auto', padding: '8px' }}
-                  >
+  return (
+    <div>
+      <header className="page-header">
+        <div>
+          <h1>Sua ludoteca</h1>
+          <p className="muted">
+            Pesquise e adicione os jogos que você tem para levá-los às jogatinas dos grupos.
+          </p>
+        </div>
+      </header>
+
+      <div className="ludoteca-columns">
+        <section className="card ludoteca-search">
+          <h2>Buscar jogos</h2>
+          <form onSubmit={handleSearch} className="ludoteca-search-form">
+            <input
+              type="text"
+              placeholder="Nome do jogo (ex: Catan)..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <select
+              value={source}
+              onChange={(e) => setSource(e.target.value as 'ludopedia' | 'bgg')}
+              aria-label="Fonte"
+            >
+              <option value="ludopedia">Ludopedia (BR)</option>
+              <option value="bgg">BoardGameGeek (INTL)</option>
+            </select>
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? 'Buscando...' : 'Pesquisar'}
+            </button>
+          </form>
+          {error && <p className="ludoteca-error">{error}</p>}
+
+          {searchResults.length > 0 && (
+            <ul className="ludoteca-results">
+              {searchResults.map((game) => (
+                <li key={game.id}>
+                  <GameThumb game={game} />
+                  <span>{game.name}</span>
+                  <button onClick={() => openDetailsModal(game)} className="btn-secondary btn-sm">
                     + Adicionar
                   </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      <section>
-        <h2>Meus Jogos ({myCollection.length})</h2>
-        {myCollection.length === 0 ? (
-          <p style={{ color: '#a1a1aa' }}>Sua ludoteca está vazia.</p>
-        ) : (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-              gap: '20px',
-              marginTop: '20px',
-            }}
-          >
-            {myCollection.map((game) => (
-              <div
-                key={game.id}
-                style={{
-                  background: '#1c1c1f',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  border: '1px solid #6366f1',
-                }}
-              >
-                <img
-                  src={game.image || 'https://via.placeholder.com/200x200?text=Sem+Imagem'}
-                  alt={game.name}
-                  style={{ width: '100%', height: '200px', objectFit: 'cover' }}
-                />
-                <div style={{ padding: '15px' }}>
-                  <h4 style={{ margin: '0 0 5px 0' }}>{game.name}</h4>
-                  <small style={{ color: '#a1a1aa', display: 'block' }}>
-                    ⏱ {game.playtime} min
-                  </small>
-                  {(game.minPlayers || game.maxPlayers) && (
-                    <small style={{ color: '#a1a1aa', display: 'block', marginTop: '2px' }}>
-                      👥 {game.minPlayers || '?'}
-                      {game.maxPlayers && game.maxPlayers !== game.minPlayers
-                        ? ` - ${game.maxPlayers}`
-                        : ''}{' '}
-                      jogadores
-                    </small>
-                  )}
-                  {game.observation && (
-                    <small style={{ color: '#fbbf24', display: 'block', marginTop: '4px' }}>
-                      📝 {game.observation}
-                    </small>
-                  )}
-                  {game.expansions && game.expansions.length > 0 && (
-                    <small style={{ color: '#34d399', display: 'block', marginTop: '4px' }}>
-                      🧩 {game.expansions.length} expansão(ões)
-                    </small>
-                  )}
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                    <button
-                      onClick={() => openEditModal(game)}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        background: '#3f3f46',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => removeFromCollection(game.id)}
-                      style={{
-                        flex: 1,
-                        padding: '8px',
-                        background: 'transparent',
-                        color: '#ef4444',
-                        border: '1px solid #ef4444',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Remover
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* MODAL DE ADIÇÃO DE JOGO */}
-      {selectedGame && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
-        >
-          <div
-            style={{
-              background: '#1c1c1f',
-              borderRadius: '12px',
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              border: '1px solid #444',
-              padding: '30px',
-            }}
-          >
-            {detailsLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                <h3>Buscando detalhes do jogo...</h3>
-              </div>
-            ) : (
-              <>
-                <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-                  <img
-                    src={selectedGame.image || 'https://via.placeholder.com/150'}
-                    alt={selectedGame.name}
-                    style={{
-                      width: '150px',
-                      height: '150px',
-                      objectFit: 'cover',
-                      borderRadius: '8px',
-                    }}
-                  />
-                  <div>
-                    <h2 style={{ marginTop: 0, marginBottom: '10px' }}>{selectedGame.name}</h2>
-                    <p
-                      style={{
-                        fontSize: '0.9rem',
-                        color: '#a1a1aa',
-                        maxHeight: '100px',
-                        overflowY: 'auto',
-                      }}
-                    >
-                      {selectedGame.description
-                        ? selectedGame.description.replace(/<[^>]+>/g, '')
-                        : 'Sem descrição disponível.'}
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '15px' }}>
-                  <label
-                    style={{
-                      display: 'block',
-                      marginBottom: '5px',
-                      fontSize: '0.9rem',
-                      color: '#a1a1aa',
-                    }}
-                  >
-                    Tempo de Jogo (minutos)
-                  </label>
-                  <input
-                    type="text"
-                    value={playtime}
-                    onChange={(e) => setPlaytime(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #444',
-                      background: 'rgba(0,0,0,0.2)',
-                      color: '#fff',
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                  <div style={{ flex: 1 }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: '5px',
-                        fontSize: '0.9rem',
-                        color: '#a1a1aa',
-                      }}
-                    >
-                      Mín. Jogadores
-                    </label>
-                    <input
-                      type="number"
-                      value={minPlayers}
-                      onChange={(e) => setMinPlayers(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        borderRadius: '8px',
-                        border: '1px solid #444',
-                        background: 'rgba(0,0,0,0.2)',
-                        color: '#fff',
-                      }}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: '5px',
-                        fontSize: '0.9rem',
-                        color: '#a1a1aa',
-                      }}
-                    >
-                      Máx. Jogadores
-                    </label>
-                    <input
-                      type="number"
-                      value={maxPlayers}
-                      onChange={(e) => setMaxPlayers(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        borderRadius: '8px',
-                        border: '1px solid #444',
-                        background: 'rgba(0,0,0,0.2)',
-                        color: '#fff',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '25px' }}>
-                  <label
-                    style={{
-                      display: 'block',
-                      marginBottom: '5px',
-                      fontSize: '0.9rem',
-                      color: '#a1a1aa',
-                    }}
-                  >
-                    Observações (ex: Falta um meeple, Edição KS)
-                  </label>
-                  <input
-                    type="text"
-                    value={observation}
-                    onChange={(e) => setObservation(e.target.value)}
-                    placeholder="Sua observação sobre esta cópia..."
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #444',
-                      background: 'rgba(0,0,0,0.2)',
-                      color: '#fff',
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
-                  <button
-                    onClick={() => setSelectedGame(null)}
-                    className="btn-danger"
-                    style={{ padding: '10px 20px', border: 'none', background: 'transparent' }}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={confirmAddToCollection}
-                    className="btn-primary"
-                    style={{ padding: '10px 20px' }}
-                  >
-                    Confirmar Adição
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* MODAL DE EDIÇÃO E EXPANSÕES */}
-      {editingGame && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
-        >
-          <div
-            style={{
-              background: '#1c1c1f',
-              borderRadius: '12px',
-              width: '100%',
-              maxWidth: '800px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              border: '1px solid #444',
-              padding: '30px',
-            }}
-          >
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-              <img
-                src={editingGame.image || 'https://via.placeholder.com/150'}
-                alt={editingGame.name}
-                style={{ width: '100px', height: '100px', objectFit: 'cover', borderRadius: '8px' }}
+        <section>
+          <div className="ludoteca-collection-header">
+            <h2>
+              Meus jogos (
+              {filteredCollection.length === myCollection.length
+                ? myCollection.length
+                : `${filteredCollection.length} de ${myCollection.length}`}
+              )
+            </h2>
+            <div className="ludoteca-filters">
+              <input
+                type="search"
+                placeholder="Filtrar por nome..."
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                aria-label="Filtrar por nome"
               />
-              <div>
-                <h2 style={{ marginTop: 0, marginBottom: '10px' }}>Editando: {editingGame.name}</h2>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-              <div style={{ flex: '1 1 300px' }}>
-                <div style={{ marginBottom: '15px' }}>
-                  <label
-                    style={{
-                      display: 'block',
-                      marginBottom: '5px',
-                      fontSize: '0.9rem',
-                      color: '#a1a1aa',
-                    }}
-                  >
-                    Tempo de Jogo (minutos)
-                  </label>
-                  <input
-                    type="text"
-                    value={playtime}
-                    onChange={(e) => setPlaytime(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #444',
-                      background: 'rgba(0,0,0,0.2)',
-                      color: '#fff',
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
-                  <div style={{ flex: 1 }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: '5px',
-                        fontSize: '0.9rem',
-                        color: '#a1a1aa',
-                      }}
-                    >
-                      Mín. Jogadores
-                    </label>
-                    <input
-                      type="number"
-                      value={minPlayers}
-                      onChange={(e) => setMinPlayers(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        borderRadius: '8px',
-                        border: '1px solid #444',
-                        background: 'rgba(0,0,0,0.2)',
-                        color: '#fff',
-                      }}
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        marginBottom: '5px',
-                        fontSize: '0.9rem',
-                        color: '#a1a1aa',
-                      }}
-                    >
-                      Máx. Jogadores
-                    </label>
-                    <input
-                      type="number"
-                      value={maxPlayers}
-                      onChange={(e) => setMaxPlayers(e.target.value)}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        borderRadius: '8px',
-                        border: '1px solid #444',
-                        background: 'rgba(0,0,0,0.2)',
-                        color: '#fff',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ marginBottom: '25px' }}>
-                  <label
-                    style={{
-                      display: 'block',
-                      marginBottom: '5px',
-                      fontSize: '0.9rem',
-                      color: '#a1a1aa',
-                    }}
-                  >
-                    Observações
-                  </label>
-                  <input
-                    type="text"
-                    value={observation}
-                    onChange={(e) => setObservation(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      borderRadius: '8px',
-                      border: '1px solid #444',
-                      background: 'rgba(0,0,0,0.2)',
-                      color: '#fff',
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div
-                style={{
-                  flex: '1 1 300px',
-                  background: 'rgba(255,255,255,0.03)',
-                  padding: '15px',
-                  borderRadius: '8px',
-                }}
+              <select
+                value={filterPlayers}
+                onChange={(e) => setFilterPlayers(e.target.value)}
+                aria-label="Jogadores"
               >
-                <h3 style={{ marginTop: 0 }}>Expansões Adicionadas</h3>
-                {!editingGame.expansions || editingGame.expansions.length === 0 ? (
-                  <p style={{ color: '#a1a1aa', fontSize: '0.9rem' }}>
-                    Nenhuma expansão cadastrada.
-                  </p>
-                ) : (
-                  <ul
-                    style={{
-                      listStyle: 'none',
-                      padding: 0,
-                      margin: 0,
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '10px',
-                    }}
-                  >
-                    {editingGame.expansions.map((exp) => (
-                      <li
-                        key={exp.id}
-                        style={{
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          background: 'rgba(0,0,0,0.2)',
-                          padding: '10px',
-                          borderRadius: '6px',
-                        }}
-                      >
-                        <span style={{ fontSize: '0.9rem' }}>{exp.name}</span>
-                        <button
-                          onClick={() => removeExpansion(exp.id)}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: '#ef4444',
-                            cursor: 'pointer',
-                            fontSize: '0.9rem',
-                          }}
-                        >
-                          Remover
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
-
-            <hr style={{ border: 'none', borderTop: '1px solid #444', margin: '30px 0' }} />
-
-            <div style={{ marginBottom: '30px' }}>
-              <h3>Buscar e Adicionar Expansão</h3>
-              <form
-                onSubmit={handleExpSearch}
-                style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}
+                <option value="">Qualquer nº de jogadores</option>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                  <option key={n} value={n}>
+                    {n} {n === 1 ? 'jogador' : 'jogadores'}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={filterPlaytime}
+                onChange={(e) => setFilterPlaytime(e.target.value)}
+                aria-label="Duração"
               >
-                <input
-                  type="text"
-                  placeholder="Nome da expansão (deixe em branco para ver todas)..."
-                  value={expSearchQuery}
-                  onChange={(e) => setExpSearchQuery(e.target.value)}
-                  style={{
-                    flex: 1,
-                    padding: '10px',
-                    borderRadius: '8px',
-                    border: '1px solid #444',
-                    background: 'rgba(0,0,0,0.2)',
-                    color: '#fff',
-                  }}
-                />
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={expSearchLoading}
-                  style={{ padding: '10px 20px' }}
-                >
-                  {expSearchLoading ? 'Buscando...' : 'Buscar'}
-                </button>
-              </form>
+                <option value="">Qualquer duração</option>
+                <option value="30">Até 30 min</option>
+                <option value="60">Até 1 hora</option>
+                <option value="90">Até 1h30</option>
+                <option value="120">Até 2 horas</option>
+              </select>
+            </div>
+          </div>
 
-              {expSearchResults.length > 0 && (
-                <div
-                  style={{
-                    marginTop: '20px',
-                    maxHeight: '250px',
-                    overflowY: 'auto',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                  }}
-                >
-                  {expSearchResults.map((exp) => (
-                    <div
-                      key={exp.id}
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        background: '#27272a',
-                        padding: '10px 15px',
-                        borderRadius: '8px',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <img
-                          src={exp.image || 'https://via.placeholder.com/50'}
-                          alt={exp.name}
-                          style={{
-                            width: '50px',
-                            height: '50px',
-                            objectFit: 'cover',
-                            borderRadius: '4px',
-                          }}
-                        />
-                        <span style={{ fontSize: '0.95rem' }}>{exp.name}</span>
-                      </div>
+          {myCollection.length === 0 ? (
+            <p className="card empty-state">Sua ludoteca está vazia.</p>
+          ) : filteredCollection.length === 0 ? (
+            <p className="card empty-state">Nenhum jogo combina com os filtros.</p>
+          ) : (
+            <ul className="ludoteca-grid">
+              {filteredCollection.map((game) => (
+                <li key={game.id} className="ludoteca-game">
+                  <GameThumb game={game} />
+                  <div className="ludoteca-game-body">
+                    <h3>{game.name}</h3>
+                    {game.playtime && <small className="muted">⏱ {game.playtime} min</small>}
+                    {(game.minPlayers || game.maxPlayers) && (
+                      <small className="muted">
+                        👥 {game.minPlayers || '?'}
+                        {game.maxPlayers && game.maxPlayers !== game.minPlayers
+                          ? ` - ${game.maxPlayers}`
+                          : ''}{' '}
+                        jogadores
+                      </small>
+                    )}
+                    {game.observation && (
+                      <small className="ludoteca-note">📝 {game.observation}</small>
+                    )}
+                    {game.expansions && game.expansions.length > 0 && (
+                      <small className="ludoteca-expansions">
+                        🧩 {game.expansions.length} expansão(ões)
+                      </small>
+                    )}
+                    <div className="ludoteca-game-actions">
+                      <button onClick={() => openEditModal(game)} className="btn-secondary btn-sm">
+                        Editar
+                      </button>
                       <button
-                        onClick={() => addExpansion(exp)}
-                        className="btn-primary"
-                        style={{ padding: '6px 12px', fontSize: '0.85rem' }}
+                        onClick={() => removeFromCollection(game.id)}
+                        className="btn-link ludoteca-remove"
                       >
-                        + Adicionar
+                        Remover
                       </button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
 
-            <div
-              style={{
-                display: 'flex',
-                gap: '15px',
-                justifyContent: 'flex-end',
-                marginTop: '20px',
-              }}
-            >
-              <button
-                onClick={() => setEditingGame(null)}
-                className="btn-danger"
-                style={{ padding: '10px 20px', border: 'none', background: 'transparent' }}
-              >
+      {selectedGame && (
+        <Modal
+          title={selectedGame.name}
+          onClose={() => setSelectedGame(null)}
+          footer={
+            !detailsLoading && (
+              <>
+                <button onClick={() => setSelectedGame(null)} className="btn-secondary">
+                  Cancelar
+                </button>
+                <button onClick={confirmAddToCollection} className="btn-primary">
+                  Confirmar adição
+                </button>
+              </>
+            )
+          }
+        >
+          {detailsLoading ? (
+            <p className="empty-state">Buscando detalhes do jogo...</p>
+          ) : (
+            <>
+              <div className="ludoteca-details">
+                <GameThumb game={selectedGame} />
+                <p className="muted">
+                  {selectedGame.description
+                    ? selectedGame.description.replace(/<[^>]+>/g, '')
+                    : 'Sem descrição disponível.'}
+                </p>
+              </div>
+              {gameFields}
+            </>
+          )}
+        </Modal>
+      )}
+
+      {editingGame && (
+        <Modal
+          title={`Editando: ${editingGame.name}`}
+          size="lg"
+          onClose={() => setEditingGame(null)}
+          footer={
+            <>
+              <button onClick={() => setEditingGame(null)} className="btn-secondary">
                 Cancelar
               </button>
-              <button
-                onClick={confirmEdit}
-                className="btn-primary"
-                style={{ padding: '10px 20px' }}
-              >
-                Salvar Alterações
+              <button onClick={confirmEdit} className="btn-primary">
+                Salvar alterações
               </button>
+            </>
+          }
+        >
+          <div className="ludoteca-edit">
+            {gameFields}
+
+            <div className="ludoteca-edit-expansions">
+              <h3>Expansões adicionadas</h3>
+              {!editingGame.expansions || editingGame.expansions.length === 0 ? (
+                <p className="muted">Nenhuma expansão cadastrada.</p>
+              ) : (
+                <ul>
+                  {editingGame.expansions.map((exp) => (
+                    <li key={exp.id}>
+                      <span>{exp.name}</span>
+                      <button
+                        onClick={() => removeExpansion(exp.id)}
+                        className="btn-link ludoteca-remove"
+                      >
+                        Remover
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
-        </div>
+
+          <div className="ludoteca-exp-search">
+            <h3>Buscar e adicionar expansão</h3>
+            <form onSubmit={handleExpSearch} className="ludoteca-search-form">
+              <input
+                type="text"
+                placeholder="Nome da expansão (deixe em branco para ver todas)..."
+                value={expSearchQuery}
+                onChange={(e) => setExpSearchQuery(e.target.value)}
+              />
+              <button type="submit" className="btn-primary" disabled={expSearchLoading}>
+                {expSearchLoading ? 'Buscando...' : 'Buscar'}
+              </button>
+            </form>
+
+            {expSearchResults.length > 0 && (
+              <ul className="ludoteca-results">
+                {expSearchResults.map((exp) => (
+                  <li key={exp.id}>
+                    <GameThumb game={exp} />
+                    <span>{exp.name}</span>
+                    <button onClick={() => addExpansion(exp)} className="btn-secondary btn-sm">
+                      + Adicionar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Modal>
       )}
     </div>
   );
