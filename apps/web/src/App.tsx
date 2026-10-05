@@ -122,7 +122,15 @@ function App() {
         <AppRoutes />
         <Toaster
           position="bottom-center"
-          toastOptions={{ style: { background: '#333', color: '#fff' } }}
+          // Acima da navegação fixa do rodapé no celular
+          containerStyle={{ bottom: 88 }}
+          toastOptions={{
+            style: {
+              background: 'var(--bg-tertiary)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-color)',
+            },
+          }}
         />
       </Router>
     </AuthProvider>

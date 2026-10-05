@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { groupService } from '../services/groupService';
 import { ApiError } from '../services/apiClient';
+import './JoinGroup.scss';
 
 export const JoinGroup = () => {
   const { token } = useParams<{ token: string }>();
@@ -36,31 +37,12 @@ export const JoinGroup = () => {
   }, [user, token, navigate]);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        minHeight: '100vh',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div
-        style={{
-          background: 'rgba(20,20,22,0.8)',
-          padding: '40px',
-          borderRadius: '12px',
-          border: '1px solid #333',
-          textAlign: 'center',
-        }}
-      >
-        <h2>Entrando no Grupo</h2>
-        <p style={{ marginTop: '20px', color: '#a1a1aa' }}>{status}</p>
-        <button
-          onClick={() => navigate('/')}
-          className="btn-primary"
-          style={{ marginTop: '20px', padding: '10px 20px' }}
-        >
-          Voltar ao Início
+    <div className="join-group">
+      <div className="card">
+        <h2>Entrando no grupo</h2>
+        <p className="muted">{status}</p>
+        <button onClick={() => navigate('/')} className="btn-primary">
+          Voltar ao início
         </button>
       </div>
     </div>
