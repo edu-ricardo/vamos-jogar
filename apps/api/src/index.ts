@@ -6,6 +6,7 @@ import groupRoutes from './routes/groups';
 import cronRoutes from './routes/cron';
 import accountRoutes from './routes/account';
 import pushRoutes from './routes/push';
+import adminRoutes from './routes/admin';
 import { readVapidConfig, reminderService } from './services/notifications';
 import { startReminderScheduler } from './services/reminderScheduler';
 
@@ -25,6 +26,7 @@ app.use('/api/groups', groupRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/admin', adminRoutes);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 app.listen(PORT, '0.0.0.0', () => {

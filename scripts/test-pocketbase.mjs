@@ -54,6 +54,7 @@ try {
       'tests/pocketbase.api.test.ts',
       'tests/pocketbase.import.test.ts',
       'tests/pocketbase.push.test.ts',
+      'tests/pocketbase.admin.test.ts',
       '--no-file-parallelism',
     ],
     {

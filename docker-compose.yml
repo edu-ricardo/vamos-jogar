@@ -28,6 +28,8 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
       VAPID_SUBJECT: ${VAPID_SUBJECT:-http://localhost:3080}
+      # Admins fixos do painel /admin (e-mails separados por vírgula)
+      APP_ADMIN_EMAILS: ${APP_ADMIN_EMAILS:-}
     depends_on:
       - pocketbase
 
