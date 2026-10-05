@@ -11,6 +11,7 @@ import { GroupDetails } from './pages/GroupDetails';
 import { EventDetails } from './pages/EventDetails';
 import { Grupos } from './pages/Grupos';
 import { Conta } from './pages/Conta';
+import { Admin } from './pages/Admin';
 import { Layout } from './components/Layout';
 import { Toaster } from 'react-hot-toast';
 
@@ -77,6 +78,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <Layout>
               <Conta />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Admin />
             </Layout>
           </ProtectedRoute>
         }

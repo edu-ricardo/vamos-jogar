@@ -16,6 +16,8 @@ export interface AuthGateway {
   signInWithEmail(email: string, password: string): Promise<void>;
   signUpWithEmail(email: string, password: string): Promise<void>;
   updateDisplayName(displayName: string): Promise<void>;
+  // Exige a senha atual (ou a temporária recebida do admin); a sessão continua aberta
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
   logout(): Promise<void>;
 }
 

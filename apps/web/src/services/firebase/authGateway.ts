@@ -8,6 +8,9 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
 } from 'firebase/auth';
 import type { AppUser, AuthGateway } from '../authService';
 
@@ -44,6 +47,16 @@ export const createFirebaseAuthGateway = (auth: Auth): AuthGateway => {
 
     signInWithEmail: async (email, password) => {
       await signInWithEmailAndPassword(auth, email, password);
+    },
+
+    changePassword: async (currentPassword, newPassword) => {
+      const user = auth.currentUser;
+      if (!user?.email) throw new Error('Nenhum usuário logado');
+      await reauthenticateWithCredential(
+        user,
+        EmailAuthProvider.credential(user.email, currentPassword),
+      );
+      await updatePassword(user, newPassword);
     },
 
     signUpWithEmail: async (email, password) => {

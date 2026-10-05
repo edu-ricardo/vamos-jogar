@@ -53,6 +53,18 @@ export const createPocketBaseAuthGateway = (pb: PocketBase): AuthGateway => {
       await pb.collection('users').update(record.id, { name: displayName });
     },
 
+    changePassword: async (currentPassword, newPassword) => {
+      const record = pb.authStore.record;
+      if (!record) throw new Error('Nenhum usuário logado');
+      await pb.collection('users').update(record.id, {
+        oldPassword: currentPassword,
+        password: newPassword,
+        passwordConfirm: newPassword,
+      });
+      // Trocar a senha invalida o token atual: entra de novo com a senha nova
+      await pb.collection('users').authWithPassword(record.email, newPassword);
+    },
+
     logout: async () => {
       pb.authStore.clear();
     },

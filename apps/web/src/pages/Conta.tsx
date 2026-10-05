@@ -8,10 +8,12 @@ import toast from 'react-hot-toast';
 import './Conta.scss';
 
 export const Conta = () => {
-  const { user, logout, updateDisplayName } = useAuth();
+  const { user, logout, updateDisplayName, changePassword } = useAuth();
   const [nickname, setNickname] = useState(user?.displayName || '');
   const [loading, setLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const handleUpdateNickname = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +36,29 @@ export const Conta = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwords.next.length < 8) {
+      toast.error('A nova senha precisa de pelo menos 8 caracteres.');
+      return;
+    }
+    if (passwords.next !== passwords.confirm) {
+      toast.error('A confirmação não bate com a nova senha.');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await changePassword(passwords.current, passwords.next);
+      setPasswords({ current: '', next: '', confirm: '' });
+      toast.success('Senha alterada.');
+    } catch (err) {
+      console.error(err);
+      toast.error('Não foi possível trocar a senha. Confira a senha atual.');
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -79,6 +104,52 @@ export const Conta = () => {
       </section>
 
       <NotificationSettings />
+
+      <section className="card">
+        <h2>Trocar senha</h2>
+        <p className="muted">
+          Para quem entra com e-mail e senha ou recebeu uma senha temporária. Quem entra com o
+          Google não precisa de senha.
+        </p>
+        <form onSubmit={handleChangePassword} className="conta-form">
+          <div className="field">
+            <label htmlFor="current-password">Senha atual</label>
+            <input
+              id="current-password"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={passwords.current}
+              onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="new-password">Nova senha (mínimo 8 caracteres)</label>
+            <input
+              id="new-password"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={passwords.next}
+              onChange={(e) => setPasswords({ ...passwords, next: e.target.value })}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="confirm-password">Confirme a nova senha</label>
+            <input
+              id="confirm-password"
+              type="password"
+              autoComplete="new-password"
+              required
+              value={passwords.confirm}
+              onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
+            />
+          </div>
+          <button type="submit" className="btn-secondary" disabled={changingPassword}>
+            {changingPassword ? 'Salvando...' : 'Trocar senha'}
+          </button>
+        </form>
+      </section>
 
       <section className="card conta-danger">
         <h2>Zona de perigo</h2>

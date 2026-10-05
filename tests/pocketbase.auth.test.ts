@@ -68,4 +68,21 @@ describeIfPocketBase('AuthGateway PocketBase', () => {
     const gateway = createPocketBaseAuthGateway(new PocketBase(url));
     await expect(gateway.signInWithEmail('ninguem@vamosjogar.test', 'errada')).rejects.toThrow();
   });
+
+  it('troca a senha: exige a atual e mantém a sessão aberta', async () => {
+    const pb = new PocketBase(url);
+    pb.autoCancellation(false);
+    const gateway = createPocketBaseAuthGateway(pb);
+    const email = `senha-${Date.now()}@vamosjogar.test`;
+    await gateway.signUpWithEmail(email, 'senha-antiga-123');
+
+    await expect(gateway.changePassword('errada-123456', 'senha-nova-123')).rejects.toThrow();
+    await gateway.changePassword('senha-antiga-123', 'senha-nova-123');
+    expect(pb.authStore.isValid).toBe(true);
+    await pb.collection('users').authRefresh();
+
+    const other = createPocketBaseAuthGateway(new PocketBase(url));
+    await expect(other.signInWithEmail(email, 'senha-antiga-123')).rejects.toThrow();
+    await other.signInWithEmail(email, 'senha-nova-123');
+  });
 });

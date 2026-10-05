@@ -12,7 +12,10 @@ const NAV_ITEMS = [
 
 // Celular: barra no topo e navegação no rodapé. Desktop: barra lateral fixa.
 export const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { logout } = useAuth();
+  const { logout, isAppAdmin } = useAuth();
+  const navItems = isAppAdmin
+    ? [...NAV_ITEMS, { to: '/admin', label: 'Admin', icon: '🛡️' }]
+    : NAV_ITEMS;
 
   return (
     <div className="app-shell">
@@ -23,7 +26,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </Link>
 
         <nav className="app-nav">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.to === '/'} className="app-nav-link">
               <span aria-hidden="true">{item.icon}</span>
               <span>{item.label}</span>
