@@ -1,118 +1,42 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { NavLink, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import './Layout.scss';
 
+const NAV_ITEMS = [
+  { to: '/', label: 'Início', icon: '🏠' },
+  { to: '/ludoteca', label: 'Ludoteca', icon: '🎲' },
+  { to: '/grupos', label: 'Grupos', icon: '👥' },
+  { to: '/conta', label: 'Conta', icon: '👤' },
+];
+
+// Celular: barra no topo e navegação no rodapé. Desktop: barra lateral fixa.
 export const Layout = ({ children }: { children: React.ReactNode }) => {
   const { logout } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        background: '#09090b',
-        color: '#fff',
-      }}
-    >
-      <header
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          padding: '15px 20px',
-          borderBottom: '1px solid #27272a',
-          background: '#18181b',
-        }}
-      >
-        <div
-          style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}
-          onClick={() => navigate('/')}
-        >
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              background: '#7e22ce',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '14px',
-            }}
-          >
-            VJ
-          </div>
-          <h2
-            style={
-              {
-                margin: 0,
-                fontSize: '1.2rem',
-                display: 'none',
-                '@media (min-width: 600px)': { display: 'block' },
-              } as any
-            }
-          >
-            Vamos Jogar
-          </h2>
-        </div>
+    <div className="app-shell">
+      <aside className="app-sidebar">
+        <Link to="/" className="app-brand">
+          <span className="app-logo">VJ</span>
+          <span className="app-brand-name">Vamos Jogar</span>
+        </Link>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {location.pathname !== '/' && (
-            <button
-              onClick={() => navigate('/')}
-              style={{
-                padding: '6px 12px',
-                background: 'transparent',
-                border: '1px solid #71717a',
-                borderRadius: '6px',
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-              }}
-            >
-              Home
-            </button>
-          )}
-          <button
-            onClick={() => navigate('/conta')}
-            style={{
-              padding: '6px 12px',
-              background: 'transparent',
-              border: '1px solid #3b82f6',
-              borderRadius: '6px',
-              color: '#3b82f6',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-            }}
-          >
-            Conta
-          </button>
-          <button
-            onClick={logout}
-            style={{
-              padding: '6px 12px',
-              background: 'transparent',
-              border: '1px solid #ef4444',
-              borderRadius: '6px',
-              color: '#ef4444',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-            }}
-          >
-            Sair
-          </button>
-        </div>
-      </header>
+        <nav className="app-nav">
+          {NAV_ITEMS.map((item) => (
+            <NavLink key={item.to} to={item.to} end={item.to === '/'} className="app-nav-link">
+              <span aria-hidden="true">{item.icon}</span>
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </nav>
 
-      <main
-        style={{ flex: 1, padding: '20px', maxWidth: '800px', margin: '0 auto', width: '100%' }}
-      >
-        {children}
-      </main>
+        <button type="button" onClick={logout} className="app-logout">
+          Sair
+        </button>
+      </aside>
+
+      <main className="app-main">{children}</main>
     </div>
   );
 };

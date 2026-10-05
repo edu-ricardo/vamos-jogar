@@ -1,12 +1,23 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { groupService } from '../services/groupService';
+import { groupService, type Group } from '../services/groupService';
 import { eventService, type Event } from '../services/eventService';
+import './Dashboard.scss';
+
+const STATUS_LABEL: Record<Event['status'], string> = {
+  VOTING_DATE: 'Votando data e local',
+  VOTING_GAMES: 'Votando jogos',
+  CONFIRMED: 'Confirmado',
+};
+
+// "2026-10-09" → "out"
+const monthLabel = (date: string) =>
+  new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
 
 export const Dashboard = () => {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const [groups, setGroups] = useState<Group[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<
     {
       event: Event;
@@ -26,6 +37,7 @@ export const Dashboard = () => {
       if (!user) return;
       try {
         const groups = await groupService.fetchUserGroups(user.uid);
+        setGroups(groups);
         let allFutureEvents: {
           event: Event;
           groupName: string;
@@ -119,134 +131,84 @@ export const Dashboard = () => {
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginBottom: '40px' }}>
-        <button
-          onClick={() => navigate('/ludoteca')}
-          className="btn-primary"
-          style={{
-            width: '100%',
-            padding: '20px',
-            fontSize: '1.2rem',
-            background: 'transparent',
-            border: '1px solid #fff',
-            borderRadius: '12px',
-            color: '#fff',
-          }}
-        >
-          Ludoteca
-        </button>
-        <button
-          onClick={() => navigate('/grupos')}
-          className="btn-primary"
-          style={{
-            width: '100%',
-            padding: '20px',
-            fontSize: '1.2rem',
-            background: 'transparent',
-            border: '1px solid #fff',
-            borderRadius: '12px',
-            color: '#fff',
-          }}
-        >
-          Grupos
-        </button>
-      </div>
+    <div className="dashboard">
+      <header className="page-header">
+        <div>
+          <h1>Olá{user?.displayName ? `, ${user.displayName}` : ''}!</h1>
+          <p className="muted">Suas próximas jogatinas e grupos.</p>
+        </div>
+      </header>
 
-      <section
-        style={{
-          border: '1px solid #333',
-          borderRadius: '12px',
-          padding: '20px',
-          background: 'rgba(255,255,255,0.02)',
-        }}
-      >
-        <h2
-          style={{
-            marginTop: 0,
-            borderBottom: '1px solid #333',
-            paddingBottom: '15px',
-            marginBottom: '15px',
-          }}
-        >
-          Próximos Eventos
-        </h2>
+      <div className="dashboard-columns">
+        <section className="card">
+          <h2 className="dashboard-section-title">Próximos eventos</h2>
 
-        {loadingEvents ? (
-          <p style={{ color: '#a1a1aa', textAlign: 'center' }}>Buscando eventos...</p>
-        ) : upcomingEvents.length === 0 ? (
-          <p style={{ color: '#a1a1aa', textAlign: 'center' }}>
-            Nenhum evento agendado para o futuro.
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {upcomingEvents.map((item) => (
-              <div
-                key={item.event.id}
-                onClick={() => navigate(`/event/${item.groupId}/${item.event.id}`)}
-                style={{
-                  padding: '15px',
-                  border: '1px solid #444',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  background: 'rgba(0,0,0,0.3)',
-                  transition: 'background 0.2s',
-                }}
-                onMouseOver={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.05)')}
-                onMouseOut={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.3)')}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '5px',
-                  }}
-                >
-                  <h4 style={{ margin: 0 }}>{item.groupName}</h4>
-                  <span style={{ fontSize: '0.8rem', color: '#7e22ce', fontWeight: 'bold' }}>
-                    {item.displayDate
-                      ? new Date(item.displayDate + 'T00:00:00').toLocaleDateString('pt-BR')
-                      : ''}{' '}
-                    às {item.displayTime}
-                  </span>
-                </div>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-end',
-                  }}
-                >
-                  <p style={{ margin: 0, color: '#a1a1aa', fontSize: '0.9rem' }}>
-                    Local: {item.displayLocation}
-                  </p>
-
+          {loadingEvents ? (
+            <p className="empty-state">Buscando eventos...</p>
+          ) : upcomingEvents.length === 0 ? (
+            <p className="empty-state">Nenhum evento agendado para o futuro.</p>
+          ) : (
+            <ul className="dashboard-events">
+              {upcomingEvents.map((item) => (
+                <li key={item.event.id} className="dashboard-event">
+                  <Link to={`/event/${item.groupId}/${item.event.id}`}>
+                    <div className="dashboard-event-date">
+                      <strong>{item.displayDate.slice(8, 10)}</strong>
+                      <span>{monthLabel(item.displayDate)}</span>
+                    </div>
+                    <div className="dashboard-event-info">
+                      <h3>{item.event.title}</h3>
+                      <p className="muted">
+                        {item.groupName} · {item.displayTime} · {item.displayLocation}
+                      </p>
+                      <span className="chip">{STATUS_LABEL[item.event.status]}</span>
+                    </div>
+                  </Link>
                   {item.isDateConfirmed && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(generateGoogleCalendarUrl(item), '_blank');
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid #34d399',
-                        color: '#34d399',
-                        padding: '4px 8px',
-                        borderRadius: '6px',
-                        fontSize: '0.8rem',
-                        cursor: 'pointer',
-                      }}
+                    <a
+                      href={generateGoogleCalendarUrl(item)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-secondary btn-sm"
                     >
                       + Agenda
-                    </button>
+                    </a>
                   )}
-                </div>
-              </div>
-            ))}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="card">
+          <div className="dashboard-section-title">
+            <h2>Seus grupos</h2>
+            <Link to="/grupos" className="btn-link">
+              Ver todos
+            </Link>
           </div>
-        )}
-      </section>
+          {groups.length === 0 ? (
+            <p className="empty-state">
+              Você ainda não participa de nenhum grupo. <Link to="/grupos">Crie um</Link> ou peça um
+              convite.
+            </p>
+          ) : (
+            <ul className="dashboard-groups">
+              {groups.map((g) => (
+                <li key={g.id}>
+                  <Link to={`/group/${g.id}`}>
+                    <span>{g.name}</span>
+                    <span className="muted">&rarr;</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+          <Link to="/ludoteca" className="btn-secondary btn-block dashboard-ludoteca">
+            🎲 Minha ludoteca
+          </Link>
+        </section>
+      </div>
     </div>
   );
 };

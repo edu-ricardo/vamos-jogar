@@ -6,6 +6,22 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--workspace=web", "--", "--port", "5173", "--strictPort"],
       "port": 5173
+    },
+    {
+      "name": "web-pocketbase",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--workspace=web",
+        "--",
+        "--port",
+        "5174",
+        "--strictPort",
+        "--mode",
+        "pocketbase"
+      ],
+      "port": 5174
     }
   ]
 }
