@@ -46,36 +46,15 @@ export const NotificationSettings = () => {
   const canToggle = status === 'enabled' || status === 'disabled';
 
   return (
-    <section
-      style={{
-        background: 'rgba(255,255,255,0.05)',
-        padding: '20px',
-        borderRadius: '12px',
-        marginTop: '30px',
-      }}
-    >
+    <section className="card">
       <h2>Notificações</h2>
-      <p style={{ color: '#a1a1aa', marginTop: '10px' }}>
-        {status ? EXPLANATION[status] : 'Verificando este aparelho...'}
-      </p>
+      <p className="muted">{status ? EXPLANATION[status] : 'Verificando este aparelho...'}</p>
       {canToggle && (
         <button
           type="button"
           onClick={toggle}
           disabled={busy}
-          className={status === 'enabled' ? undefined : 'btn-primary'}
-          style={
-            status === 'enabled'
-              ? {
-                  padding: '10px 20px',
-                  background: 'transparent',
-                  color: '#fff',
-                  border: '1px solid #444',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                }
-              : { padding: '10px 20px' }
-          }
+          className={status === 'enabled' ? 'btn-secondary' : 'btn-primary'}
         >
           {busy
             ? 'Aguarde...'

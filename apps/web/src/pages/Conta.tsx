@@ -3,7 +3,9 @@ import { useAuth } from '../context/AuthContext';
 import { groupService } from '../services/groupService';
 import { accountService } from '../services/accountService';
 import { NotificationSettings } from '../components/NotificationSettings';
+import { Modal } from '../components/Modal';
 import toast from 'react-hot-toast';
+import './Conta.scss';
 
 export const Conta = () => {
   const { user, logout, updateDisplayName } = useAuth();
@@ -49,134 +51,64 @@ export const Conta = () => {
   };
 
   return (
-    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-      <h1>Minha Conta</h1>
-      <p style={{ color: '#a1a1aa' }}>Gerencie seu apelido e dados de acesso.</p>
+    <div className="conta">
+      <header className="page-header">
+        <div>
+          <h1>Minha conta</h1>
+          <p className="muted">Gerencie seu apelido, notificações e dados de acesso.</p>
+        </div>
+      </header>
 
-      <section
-        style={{
-          background: 'rgba(255,255,255,0.05)',
-          padding: '20px',
-          borderRadius: '12px',
-          marginTop: '30px',
-        }}
-      >
+      <section className="card">
         <h2>Perfil</h2>
-        <form
-          onSubmit={handleUpdateNickname}
-          style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}
-        >
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', color: '#a1a1aa' }}>
-              Apelido nos grupos
-            </label>
+        <form onSubmit={handleUpdateNickname} className="conta-form">
+          <div className="field">
+            <label htmlFor="nickname">Apelido nos grupos</label>
             <input
+              id="nickname"
               type="text"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="Ex: João Boardgamer"
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #444',
-                background: 'rgba(0,0,0,0.2)',
-                color: '#fff',
-              }}
             />
           </div>
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={loading}
-            style={{ alignSelf: 'flex-start', padding: '10px 20px' }}
-          >
-            {loading ? 'Salvando...' : 'Salvar Apelido'}
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Salvando...' : 'Salvar apelido'}
           </button>
         </form>
       </section>
 
       <NotificationSettings />
 
-      <section
-        style={{
-          background: 'rgba(239, 68, 68, 0.1)',
-          border: '1px solid #ef4444',
-          padding: '20px',
-          borderRadius: '12px',
-          marginTop: '30px',
-        }}
-      >
-        <h2 style={{ color: '#ef4444', marginTop: 0 }}>Zona de Perigo</h2>
-        <p style={{ color: '#fca5a5', fontSize: '0.9rem', marginBottom: '20px' }}>
+      <section className="card conta-danger">
+        <h2>Zona de perigo</h2>
+        <p>
           Ao excluir sua conta, você perderá sua ludoteca cadastrada e será removido dos grupos.
           Essa ação não pode ser desfeita.
         </p>
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          className="btn-danger"
-          style={{ width: '100%', padding: '12px', fontSize: '1rem' }}
-        >
-          Excluir Minha Conta
+        <button onClick={() => setShowDeleteModal(true)} className="btn-danger">
+          Excluir minha conta
         </button>
       </section>
 
       {showDeleteModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
-        >
-          <div
-            style={{
-              background: '#1c1c1f',
-              padding: '30px',
-              borderRadius: '12px',
-              width: '100%',
-              maxWidth: '400px',
-              textAlign: 'center',
-              border: '1px solid #ef4444',
-            }}
-          >
-            <h2 style={{ color: '#ef4444', marginTop: 0 }}>Tem certeza?</h2>
-            <p style={{ color: '#a1a1aa', marginBottom: '30px' }}>
-              Essa ação é irreversível. Todos os seus dados serão apagados.
-            </p>
-
-            <div style={{ display: 'flex', gap: '15px', flexDirection: 'column' }}>
-              <button
-                onClick={handleDeleteAccount}
-                className="btn-danger"
-                style={{ padding: '12px' }}
-              >
-                Sim, excluir minha conta
-              </button>
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                style={{
-                  padding: '12px',
-                  background: 'transparent',
-                  color: '#fff',
-                  border: '1px solid #444',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                }}
-              >
+        <Modal
+          title="Tem certeza?"
+          size="sm"
+          onClose={() => setShowDeleteModal(false)}
+          footer={
+            <>
+              <button onClick={() => setShowDeleteModal(false)} className="btn-secondary">
                 Cancelar
               </button>
-            </div>
-          </div>
-        </div>
+              <button onClick={handleDeleteAccount} className="btn-danger">
+                Sim, excluir minha conta
+              </button>
+            </>
+          }
+        >
+          <p className="muted">Essa ação é irreversível. Todos os seus dados serão apagados.</p>
+        </Modal>
       )}
     </div>
   );
