@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { groupService } from '../services/groupService';
 import { accountService } from '../services/accountService';
+import { NotificationSettings } from '../components/NotificationSettings';
 import toast from 'react-hot-toast';
 
 export const Conta = () => {
@@ -94,6 +95,8 @@ export const Conta = () => {
           </button>
         </form>
       </section>
+
+      <NotificationSettings />
 
       <section
         style={{

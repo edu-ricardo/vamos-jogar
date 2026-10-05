@@ -1,32 +1,14 @@
 import { Request, Response } from 'express';
-import { reminderService } from '../services/reminderService';
+import { reminderService } from '../services/notifications';
 
 const FORCE_ERRORS = {
-  EVENT_NOT_FOUND: { status: 404, error: 'Event not found' },
-  FORBIDDEN: { status: 403, error: 'Only the event creator or group admin can send reminders' },
-  EVENT_CONFIRMED: { status: 400, error: 'Event is already confirmed' },
+  EVENT_NOT_FOUND: { status: 404, error: 'Evento não encontrado.' },
+  FORBIDDEN: { status: 403, error: 'Só quem criou o evento ou o admin do grupo pode cobrar.' },
+  EVENT_CONFIRMED: { status: 400, error: 'O evento já foi confirmado.' },
 } as const;
 
 export const cronController = {
-  processReminders: async (req: Request, res: Response) => {
-    // Chave enviada pelo agendador; sem CRON_SECRET configurado a rota fica fechada
-    const expectedKey = process.env.CRON_SECRET;
-    const cronKey = req.headers['x-cron-key'] || req.query.key;
-
-    if (!expectedKey || cronKey !== expectedKey) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    try {
-      const sent = await reminderService.processScheduledReminders();
-      return res.status(200).json({ success: true, message: `Reminders processed. Sent: ${sent}` });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'Internal Server Error' });
-    }
-  },
-
-  // Endpoint para o criador do evento forçar a notificação via botão do Frontend
+  // Botão "Cobrar Atrasados": avisa agora quem ainda não votou
   forceRemindersForEvent: async (req: Request, res: Response) => {
     const { groupId, eventId } = req.body;
     if (!groupId || !eventId) return res.status(400).json({ error: 'Missing parameters' });
@@ -41,7 +23,14 @@ export const cronController = {
         const { status, error } = FORCE_ERRORS[result.reason];
         return res.status(status).json({ error });
       }
-      return res.status(200).json({ success: true, message: `Sent ${result.sent} reminders.` });
+      const message =
+        result.pending === 0
+          ? 'Todo mundo já votou.'
+          : `Notificação enviada para ${result.notified} de ${result.pending} pessoa(s) que ainda não votaram.` +
+            (result.notified < result.pending
+              ? ' Quem não ativou as notificações não recebe.'
+              : '');
+      return res.status(200).json({ success: true, message });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'Internal Server Error' });

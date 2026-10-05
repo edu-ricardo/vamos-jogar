@@ -13,6 +13,8 @@ export default defineConfig({
         // Navegações para a API e o PocketBase (ex.: retorno do login Google) vão ao servidor,
         // em vez de o service worker responder com o index.html do app
         navigateFallbackDenylist: [/^\/api\//, /^\/pb\//],
+        // Recebe as notificações (Web Push) e abre o evento ao tocar
+        importScripts: ['push-sw.js'],
       },
       manifest: {
         name: 'Vamos Jogar!',

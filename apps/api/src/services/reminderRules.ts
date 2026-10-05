@@ -21,3 +21,20 @@ export const getPendingVoterIds = (memberIds: string[], event: EventVotingState)
 
 export const isReminderDue = (lastSentAt: Date | undefined, now: Date): boolean =>
   !lastSentAt || now.getTime() - lastSentAt.getTime() >= REMINDER_INTERVAL_MS;
+
+// Texto da notificação de voto pendente; ao tocar, abre o próprio evento
+export const reminderMessage = (event: {
+  id: string;
+  title: string;
+  status: string;
+  group: string;
+  groupName?: string;
+}) => ({
+  title: `Falta o seu voto: ${event.title}`,
+  body:
+    event.status === 'VOTING_GAMES'
+      ? `A galera do ${event.groupName || 'grupo'} está esperando você escolher os jogos.`
+      : `A galera do ${event.groupName || 'grupo'} está esperando você votar na data e no local.`,
+  url: `/event/${event.group}/${event.id}`,
+  tag: `lembrete-${event.id}`,
+});

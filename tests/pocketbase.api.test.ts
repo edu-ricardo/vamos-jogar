@@ -128,22 +128,28 @@ describeIfPocketBase('Serviços da API no PocketBase', () => {
   });
 
   describe('lembretes', () => {
-    it('envia só para quem não votou e respeita o intervalo de 3 dias', async () => {
+    // Simula o push: todo mundo que recebe a notificação tem ao menos um aparelho inscrito
+    const notifyAll = () => vi.fn(async (userIds: string[]) => userIds.length);
+
+    it('avisa só quem não votou, com link para o evento, e respeita o intervalo de 3 dias', async () => {
       const event = await admin
         .collection('events')
         .create({ group: groupId, creator: ids.bia, title: 'Jogatina', status: 'VOTING_DATE' });
       await admin
         .collection('votes')
         .create({ event: event.id, user: ids.ana, dateOptionId: 'd1' });
-      const send = vi.fn().mockResolvedValue(undefined);
-      const reminders = createReminderService(getAdmin, send);
+      const notify = notifyAll();
+      const reminders = createReminderService(getAdmin, notify);
 
       expect(await reminders.processScheduledReminders()).toBe(2);
-      expect(send.mock.calls.map((c) => c[0]).sort()).toEqual([
-        'bia@vamosjogar.test',
-        'caio@vamosjogar.test',
-      ]);
-      expect(send).toHaveBeenCalledWith('bia@vamosjogar.test', 'Jogatina', 'Sexta');
+      const [userIds, message] = notify.mock.calls[0];
+      expect([...userIds].sort()).toEqual([ids.bia, ids.caio].sort());
+      expect(message).toEqual({
+        title: 'Falta o seu voto: Jogatina',
+        body: 'A galera do Sexta está esperando você votar na data e no local.',
+        url: `/event/${groupId}/${event.id}`,
+        tag: `lembrete-${event.id}`,
+      });
       expect((await admin.collection('events').getOne(event.id)).lastReminderSentAt).not.toBe('');
 
       expect(await reminders.processScheduledReminders()).toBe(0);
@@ -151,11 +157,12 @@ describeIfPocketBase('Serviços da API no PocketBase', () => {
       expect(await reminders.processScheduledReminders(fourDaysLater)).toBe(2);
     });
 
-    it('cobrança manual: criador ou admin; evento confirmado não cobra', async () => {
+    it('cobrança manual: criador ou admin; informa pendentes e avisados; confirmado não cobra', async () => {
       const event = await admin
         .collection('events')
         .create({ group: groupId, creator: ids.bia, title: 'Jogatina', status: 'VOTING_GAMES' });
-      const reminders = createReminderService(getAdmin, vi.fn().mockResolvedValue(undefined));
+      // Só uma das três pessoas pendentes tem aparelho inscrito
+      const reminders = createReminderService(getAdmin, vi.fn().mockResolvedValue(1));
 
       expect(await reminders.sendRemindersForEvent(groupId, event.id, ids.caio)).toEqual({
         ok: false,
@@ -163,7 +170,8 @@ describeIfPocketBase('Serviços da API no PocketBase', () => {
       });
       expect(await reminders.sendRemindersForEvent(groupId, event.id, ids.ana)).toEqual({
         ok: true,
-        sent: 3,
+        pending: 3,
+        notified: 1,
       });
       expect(await reminders.sendRemindersForEvent('outro', event.id, ids.ana)).toEqual({
         ok: false,

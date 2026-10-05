@@ -21,11 +21,12 @@
     "fast-xml-parser": "^5.10.1",
     "firebase-admin": "^14.2.0",
     "pocketbase": "^0.28.1",
-    "resend": "^6.18.1"
+    "web-push": "^3.6.7"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/web-push": "^3.6.4",
     "tsx": "^4.23.5",
     "typescript": "^6.0.3",
     "vitest": "^5.0.3"
