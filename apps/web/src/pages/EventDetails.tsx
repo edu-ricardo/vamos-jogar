@@ -1,18 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   eventService,
   type Event,
-  type EventDateOption,
-  type EventLocationOption,
   type FavoriteLocation,
   type EventGameOption,
 } from '../services/eventService';
 import { ludotecaService, type Game } from '../services/ludotecaService';
-import { groupService } from '../services/groupService';
-import { rankGameOptions } from '../services/eventResults';
+import { groupService, type GroupMember } from '../services/groupService';
+import {
+  EVENT_STATUS_LABEL,
+  countChoices,
+  countGameVotes,
+  rankGameOptions,
+} from '../services/eventResults';
+import { Modal } from '../components/Modal';
+import { EventFormModal, type EventFormValues } from '../components/EventFormModal';
 import toast from 'react-hot-toast';
+import './EventDetails.scss';
+
+const mapsUrl = (address: string) =>
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+
+// Quantos votos a opção tem, com a barra proporcional ao total de quem já votou
+const VoteBar = ({ votes, total }: { votes: number; total: number }) => (
+  <div className="vote-bar" title={`${votes} voto(s)`}>
+    <div className="vote-bar-track">
+      <div
+        className="vote-bar-fill"
+        style={{ width: total ? `${(votes / total) * 100}%` : '0%' }}
+      />
+    </div>
+    <span>{votes}</span>
+  </div>
+);
 
 export const EventDetails = () => {
   const { groupId, eventId } = useParams<{ groupId: string; eventId: string }>();
@@ -21,6 +43,7 @@ export const EventDetails = () => {
 
   const [event, setEvent] = useState<Event | null>(null);
   const [groupAdminId, setGroupAdminId] = useState('');
+  const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
 
   // States para votação de Data/Local
@@ -28,14 +51,11 @@ export const EventDetails = () => {
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
-  // States para edição do Evento
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDateInputs, setEditDateInputs] = useState<EventDateOption[]>([]);
-  const [editLocationInputs, setEditLocationInputs] = useState<
-    (EventLocationOption & { saveFavorite: boolean })[]
-  >([]);
   const [favorites, setFavorites] = useState<FavoriteLocation[]>([]);
+
+  // Confirmações de ações sem volta
+  const [confirmAction, setConfirmAction] = useState<'delete' | 'advance' | null>(null);
 
   // States para a Fase 5 (Jogos)
   const [showSuggestGamesModal, setShowSuggestGamesModal] = useState(false);
@@ -46,9 +66,6 @@ export const EventDetails = () => {
   // Votos em jogos
   const [selectedGamesToVote, setSelectedGamesToVote] = useState<string[]>([]);
 
-  // Parciais de Votação
-  const [showResultsModal, setShowResultsModal] = useState(false);
-
   // Encerramento da votação de jogos
   const [showCloseGamesModal, setShowCloseGamesModal] = useState(false);
   const [finalGameSelection, setFinalGameSelection] = useState<string[]>([]);
@@ -56,12 +73,14 @@ export const EventDetails = () => {
   const loadEvent = async () => {
     if (!groupId || !eventId) return;
     try {
-      const [fetched, group] = await Promise.all([
+      const [fetched, group, groupMembers] = await Promise.all([
         eventService.getEventDetails(groupId, eventId),
         groupService.fetchGroupDetails(groupId),
+        groupService.fetchGroupMembers(groupId),
       ]);
       setEvent(fetched);
       setGroupAdminId(group?.adminId || '');
+      setMembers(groupMembers);
 
       if (user) {
         if (fetched.votesDate && fetched.votesDate[user.uid])
@@ -86,45 +105,21 @@ export const EventDetails = () => {
     loadEvent();
   }, [groupId, eventId, user]);
 
-  const openEditModal = () => {
-    if (!event) return;
-    setEditTitle(event.title);
-    setEditDateInputs(event.dateOptions);
-    setEditLocationInputs(event.locationOptions.map((l) => ({ ...l, saveFavorite: false })));
-    setShowEditModal(true);
-  };
-
   const handleDeleteEvent = async () => {
     if (!groupId || !eventId) return;
-    if (
-      window.confirm('Tem certeza que deseja excluir este evento? Esta ação não pode ser desfeita.')
-    ) {
-      try {
-        await eventService.deleteEvent(groupId, eventId);
-        toast.success('Evento excluído!');
-        navigate(`/group/${groupId}`);
-      } catch (err) {
-        toast.error('Erro ao excluir evento.');
-      }
+    try {
+      await eventService.deleteEvent(groupId, eventId);
+      toast.success('Evento excluído!');
+      navigate(`/group/${groupId}`);
+    } catch (err) {
+      toast.error('Erro ao excluir evento.');
     }
   };
 
-  const handleUpdateEvent = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleUpdateEvent = async ({ title, dates, locations }: EventFormValues) => {
     if (!groupId || !eventId || !user) return;
-
-    const validDates = editDateInputs.filter((d) => d.date && d.startTime);
-    const validLocations = editLocationInputs.filter(
-      (l) => l.name.trim() !== '' && l.address.trim() !== '',
-    );
-
-    if (validDates.length === 0 || validLocations.length === 0) {
-      toast.error('Preencha corretamente pelo menos uma data e um local.');
-      return;
-    }
-
     try {
-      for (const loc of validLocations) {
+      for (const loc of locations) {
         if (loc.saveFavorite) {
           await eventService.saveFavoriteLocation(user.uid, {
             name: loc.name,
@@ -136,9 +131,9 @@ export const EventDetails = () => {
       await eventService.updateEvent(
         groupId,
         eventId,
-        editTitle,
-        validDates,
-        validLocations.map(({ id, name, address }) => ({ id, name, address })),
+        title,
+        dates,
+        locations.map(({ id, name, address }) => ({ id, name, address })),
       );
 
       toast.success('Evento atualizado!');
@@ -173,24 +168,23 @@ export const EventDetails = () => {
     }
   };
 
-  const handleAdvanceToGames = async () => {
-    if (!groupId || !eventId || !user) return;
+  const openAdvanceToGames = () => {
     if (!selectedDate || !selectedLocation) {
       toast.error('Você precisa selecionar uma Data e um Local para definir como vencedores.');
       return;
     }
-    if (
-      window.confirm(
-        'Isso encerrará a votação de datas e fixará a data e local que você acabou de selecionar. Tem certeza?',
-      )
-    ) {
-      try {
-        await eventService.advanceToGamesVoting(groupId, eventId, selectedDate, selectedLocation);
-        toast.success('Votação de Jogos iniciada!');
-        loadEvent();
-      } catch (err) {
-        toast.error('Erro ao avançar fase.');
-      }
+    setConfirmAction('advance');
+  };
+
+  const handleAdvanceToGames = async () => {
+    if (!groupId || !eventId) return;
+    try {
+      await eventService.advanceToGamesVoting(groupId, eventId, selectedDate, selectedLocation);
+      toast.success('Votação de Jogos iniciada!');
+      setConfirmAction(null);
+      loadEvent();
+    } catch (err) {
+      toast.error('Erro ao avançar fase.');
     }
   };
 
@@ -266,13 +260,7 @@ export const EventDetails = () => {
 
     // Datas
     report += `*🗓️ Datas:*\n`;
-    const dateVotes = Object.values(event.votesDate || {}).reduce(
-      (acc, val) => {
-        acc[val] = (acc[val] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+    const dateVotes = countChoices(event.votesDate);
     const sortedDates = [...event.dateOptions].sort(
       (a, b) => (dateVotes[b.id] || 0) - (dateVotes[a.id] || 0),
     );
@@ -284,13 +272,7 @@ export const EventDetails = () => {
 
     // Locais
     report += `*📍 Locais:*\n`;
-    const locationVotes = Object.values(event.votesLocation || {}).reduce(
-      (acc, val) => {
-        acc[val] = (acc[val] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>,
-    );
+    const locationVotes = countChoices(event.votesLocation);
     const sortedLocs = [...event.locationOptions].sort(
       (a, b) => (locationVotes[b.id] || 0) - (locationVotes[a.id] || 0),
     );
@@ -357,8 +339,10 @@ export const EventDetails = () => {
     }
   };
 
-  if (loading)
-    return <div style={{ padding: '40px', textAlign: 'center' }}>Carregando evento...</div>;
+  const toggle = (list: string[], id: string, checked: boolean) =>
+    checked ? [...list, id] : list.filter((item) => item !== id);
+
+  if (loading) return <p className="empty-state">Carregando evento...</p>;
   if (!event) return null;
 
   // Criador do evento ou admin do grupo podem editar, excluir, cobrar e fechar etapas
@@ -367,184 +351,89 @@ export const EventDetails = () => {
   const finalDate = event.dateOptions.find((d) => d.id === event.finalDateId);
   const finalLocation = event.locationOptions.find((l) => l.id === event.finalLocationId);
 
+  const dateVotes = countChoices(event.votesDate);
+  const locationVotes = countChoices(event.votesLocation);
+  const gameVotes = countGameVotes(event.votesGames);
+  // Quem já votou na etapa atual (no evento confirmado não há mais votação)
+  const phaseVotes = event.status === 'VOTING_GAMES' ? event.votesGames || {} : event.votesDate;
+  const voterCount = Object.keys(phaseVotes).length;
+
   return (
-    <div style={{ padding: '20px 15px', maxWidth: '800px', margin: '0 auto' }}>
-      <button
-        onClick={() => navigate(`/group/${groupId}`)}
-        style={{
-          background: 'transparent',
-          color: 'var(--text-secondary)',
-          border: 'none',
-          cursor: 'pointer',
-          marginBottom: '20px',
-          padding: 0,
-        }}
-      >
-        &larr; Voltar ao Grupo
-      </button>
+    <div>
+      <Link to={`/group/${groupId}`} className="btn-back">
+        &larr; Voltar ao grupo
+      </Link>
 
-      <header
-        style={{
-          marginBottom: '30px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '15px',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-        }}
-      >
+      <header className="page-header">
         <div>
-          <h1 style={{ marginBottom: '10px' }}>{event.title}</h1>
-          <span
-            style={{
-              display: 'inline-block',
-              padding: '5px 10px',
-              background: 'var(--accent-primary-transparent)',
-              color: 'var(--accent-primary)',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.8rem',
-              fontWeight: 'bold',
-            }}
-          >
-            STATUS:{' '}
-            {event.status === 'VOTING_DATE'
-              ? 'Votação de Data'
-              : event.status === 'VOTING_GAMES'
-                ? 'Votação de Jogos'
-                : 'Confirmado'}
-          </span>
+          <h1>{event.title}</h1>
+          <span className="chip event-status">{EVENT_STATUS_LABEL[event.status]}</span>
         </div>
-
-        {canManageEvent && event.status === 'VOTING_DATE' && (
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button
-              onClick={openEditModal}
-              className="btn-primary"
-              style={{ background: '#3f3f46', padding: '8px 16px', fontSize: '0.9rem' }}
-            >
-              ✏️ Editar
-            </button>
-            <button
-              onClick={handleDeleteEvent}
-              className="btn-danger"
-              style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-            >
-              🗑️ Excluir
-            </button>
-          </div>
-        )}
       </header>
 
-      <div style={{ marginBottom: '20px', display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-        {canManageEvent && event.status !== 'CONFIRMED' && (
-          <button
-            onClick={handleForceReminders}
-            className="btn-primary"
-            style={{
-              flex: '1 1 auto',
-              background: 'var(--bg-secondary)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-              padding: '12px 16px',
-              fontSize: '0.9rem',
-            }}
-          >
-            🔔 Cobrar Atrasados
-          </button>
-        )}
-        <button
-          onClick={() => setShowResultsModal(true)}
-          className="btn-primary"
-          style={{
-            flex: '1 1 auto',
-            background: 'var(--accent-primary-transparent)',
-            color: 'var(--accent-primary)',
-            border: '1px solid var(--accent-primary)',
-            padding: '12px 16px',
-            fontSize: '0.9rem',
-          }}
-        >
-          📊 Ver Parciais
-        </button>
-      </div>
+      <div className="event-columns">
+        <div className="event-main">
+          {finalDate && finalLocation && (
+            <section className="card event-final">
+              <div>
+                <small className="muted">Definido para</small>
+                <strong>
+                  {formatDate(finalDate.date)} às {finalDate.startTime}
+                  {finalDate.endTime ? ` até ${finalDate.endTime}` : ''}
+                </strong>
+                <span className="muted">
+                  {finalLocation.name} ({finalLocation.address})
+                </span>
+              </div>
+              <a
+                href={mapsUrl(finalLocation.address)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-secondary btn-sm"
+              >
+                📍 Abrir no mapa
+              </a>
+            </section>
+          )}
 
-      {/* TELA DE VOTING DATE */}
-      {event.status === 'VOTING_DATE' && (
-        <section
-          style={{
-            background: 'var(--bg-tertiary)',
-            padding: '20px',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-color)',
-          }}
-        >
-          <h2 style={{ marginBottom: '20px' }}>Votação de Data e Local</h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>
-            Por favor, indique a sua preferência para organizarmos essa jogatina.
-          </p>
+          {event.status === 'VOTING_DATE' && (
+            <section className="card">
+              <h2>Votação de data e local</h2>
+              <p className="muted event-hint">
+                Indique a sua preferência para organizarmos essa jogatina.
+              </p>
 
-          <div style={{ marginBottom: '30px' }}>
-            <h3 style={{ marginBottom: '15px' }}>Data e Horário</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {event.dateOptions.map((opt) => (
-                <label
-                  key={opt.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '15px',
-                    cursor: 'pointer',
-                    padding: '15px',
-                    background: 'var(--bg-secondary)',
-                    borderRadius: 'var(--radius-sm)',
-                    border:
-                      selectedDate === opt.id
-                        ? '1px solid var(--accent-primary)'
-                        : '1px solid transparent',
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="date"
-                    value={opt.id}
-                    checked={selectedDate === opt.id}
-                    onChange={() => setSelectedDate(opt.id)}
-                    style={{ accentColor: 'var(--accent-primary)', transform: 'scale(1.2)' }}
-                  />
-                  <div>
-                    <strong style={{ display: 'block', fontSize: '1.1rem' }}>
-                      {formatDate(opt.date)}
-                    </strong>
-                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                      {opt.startTime} {opt.endTime ? `às ${opt.endTime}` : '(Horário de Início)'}
-                    </span>
-                  </div>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: '40px' }}>
-            <h3 style={{ marginBottom: '15px' }}>Local</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {event.locationOptions.map((opt) => {
-                const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(opt.address)}`;
-                return (
+              <h3 className="event-subtitle">Data e horário</h3>
+              <div className="event-options">
+                {event.dateOptions.map((opt) => (
                   <label
                     key={opt.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '15px',
-                      cursor: 'pointer',
-                      padding: '15px',
-                      background: 'var(--bg-secondary)',
-                      borderRadius: 'var(--radius-sm)',
-                      border:
-                        selectedLocation === opt.id
-                          ? '1px solid var(--accent-primary)'
-                          : '1px solid transparent',
-                    }}
+                    className={`event-option${selectedDate === opt.id ? ' selected' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="date"
+                      value={opt.id}
+                      checked={selectedDate === opt.id}
+                      onChange={() => setSelectedDate(opt.id)}
+                    />
+                    <div className="event-option-info">
+                      <strong>{formatDate(opt.date)}</strong>
+                      <span className="muted">
+                        {opt.startTime} {opt.endTime ? `às ${opt.endTime}` : '(horário de início)'}
+                      </span>
+                    </div>
+                    <VoteBar votes={dateVotes[opt.id] || 0} total={voterCount} />
+                  </label>
+                ))}
+              </div>
+
+              <h3 className="event-subtitle">Local</h3>
+              <div className="event-options">
+                {event.locationOptions.map((opt) => (
+                  <label
+                    key={opt.id}
+                    className={`event-option${selectedLocation === opt.id ? ' selected' : ''}`}
                   >
                     <input
                       type="radio"
@@ -552,667 +441,260 @@ export const EventDetails = () => {
                       value={opt.id}
                       checked={selectedLocation === opt.id}
                       onChange={() => setSelectedLocation(opt.id)}
-                      style={{ accentColor: 'var(--accent-primary)', transform: 'scale(1.2)' }}
                     />
-                    <div style={{ flex: 1 }}>
-                      <strong style={{ display: 'block', fontSize: '1.1rem' }}>{opt.name}</strong>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                        {opt.address}
-                      </span>
+                    <div className="event-option-info">
+                      <strong>{opt.name}</strong>
+                      <a
+                        href={mapsUrl(opt.address)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Abrir no mapa"
+                        className="muted"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        📍 {opt.address}
+                      </a>
                     </div>
-                    <a
-                      href={mapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Abrir no Maps"
-                      style={{ fontSize: '1.5rem', textDecoration: 'none' }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      📍
-                    </a>
+                    <VoteBar
+                      votes={locationVotes[opt.id] || 0}
+                      total={Object.keys(event.votesLocation).length}
+                    />
                   </label>
-                );
-              })}
-            </div>
-          </div>
-
-          <button
-            onClick={handleVoteDate}
-            disabled={submitting}
-            className="btn-primary"
-            style={{ width: '100%', padding: '15px', fontSize: '1.1rem' }}
-          >
-            {submitting
-              ? 'Registrando...'
-              : event.votesDate && user && event.votesDate[user.uid]
-                ? 'Atualizar Voto'
-                : 'Confirmar Voto'}
-          </button>
-
-          {canManageEvent && (
-            <div
-              style={{
-                marginTop: '30px',
-                paddingTop: '30px',
-                borderTop: '1px solid var(--border-color)',
-                textAlign: 'center',
-              }}
-            >
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>
-                Como administrador, escolha as opções campeãs (acima) e feche essa etapa:
-              </p>
-              <button
-                onClick={handleAdvanceToGames}
-                className="btn-primary"
-                style={{ background: '#059669', width: '100%' }}
-              >
-                Cravar Vencedores e Ir p/ Jogos &rarr;
-              </button>
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* TELA DE VOTING GAMES E EVENTO CONFIRMADO */}
-      {(event.status === 'VOTING_GAMES' || event.status === 'CONFIRMED') && (
-        <section>
-          {finalDate && finalLocation && (
-            <div
-              style={{
-                background: 'var(--bg-secondary)',
-                padding: '20px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-color)',
-                marginBottom: '30px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-              }}
-            >
-              <div>
-                <small
-                  style={{ color: 'var(--text-secondary)', display: 'block', marginBottom: '5px' }}
-                >
-                  Votação Encerrada. Definido para:
-                </small>
-                <strong>
-                  {formatDate(finalDate.date)} às {finalDate.startTime}
-                </strong>
-                <br />
-                <span style={{ color: 'var(--text-secondary)' }}>
-                  {finalLocation.name} ({finalLocation.address})
-                </span>
+                ))}
               </div>
-              <a
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(finalLocation.address)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ fontSize: '2rem', textDecoration: 'none' }}
+
+              <button
+                onClick={handleVoteDate}
+                disabled={submitting}
+                className="btn-primary btn-block"
               >
-                📍
-              </a>
-            </div>
+                {submitting
+                  ? 'Registrando...'
+                  : user && event.votesDate[user.uid]
+                    ? 'Atualizar voto'
+                    : 'Confirmar voto'}
+              </button>
+
+              {canManageEvent && (
+                <div className="event-close-step">
+                  <p className="muted">
+                    Como organizador, escolha as opções campeãs (acima) e feche essa etapa:
+                  </p>
+                  <button onClick={openAdvanceToGames} className="btn-success btn-block">
+                    Cravar vencedores e ir para jogos &rarr;
+                  </button>
+                </div>
+              )}
+            </section>
           )}
 
-          {event.status === 'VOTING_GAMES' ? (
-            <div
-              style={{
-                background: 'var(--bg-tertiary)',
-                padding: '20px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-color)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '20px',
-                }}
-              >
+          {event.status === 'VOTING_GAMES' && (
+            <section className="card">
+              <div className="event-section-header">
                 <h2>O que vamos jogar?</h2>
-                <button
-                  onClick={openSuggestGames}
-                  className="btn-primary"
-                  style={{ padding: '8px 16px', fontSize: '0.9rem' }}
-                >
-                  + Sugerir Jogos
+                <button onClick={openSuggestGames} className="btn-secondary btn-sm">
+                  + Sugerir jogos
                 </button>
               </div>
-
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '30px' }}>
+              <p className="muted event-hint">
                 Vote nos jogos que você quer que estejam na mesa. Pode votar em quantos quiser!
               </p>
 
               {!event.gameOptions || event.gameOptions.length === 0 ? (
-                <p
-                  style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '40px 0' }}
-                >
+                <p className="empty-state">
                   Nenhum jogo sugerido ainda. Puxe algo da sua Ludoteca!
                 </p>
               ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    marginBottom: '30px',
-                  }}
-                >
-                  {event.gameOptions.map((g) => (
-                    <label
-                      key={g.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '15px',
-                        cursor: 'pointer',
-                        padding: '15px',
-                        background: 'var(--bg-secondary)',
-                        borderRadius: 'var(--radius-sm)',
-                        border: selectedGamesToVote.includes(g.id)
-                          ? '1px solid var(--accent-primary)'
-                          : '1px solid transparent',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedGamesToVote.includes(g.id)}
-                        onChange={(e) => {
-                          if (e.target.checked)
-                            setSelectedGamesToVote([...selectedGamesToVote, g.id]);
-                          else
-                            setSelectedGamesToVote(selectedGamesToVote.filter((id) => id !== g.id));
-                        }}
-                        style={{ accentColor: 'var(--accent-primary)', transform: 'scale(1.2)' }}
-                      />
-                      <img
-                        src={g.thumb}
-                        alt={g.name}
-                        style={{
-                          width: '50px',
-                          height: '50px',
-                          objectFit: 'cover',
-                          borderRadius: 'var(--radius-sm)',
-                        }}
-                      />
-                      <div style={{ flex: 1 }}>
-                        <strong style={{ display: 'block', fontSize: '1.1rem' }}>{g.name}</strong>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                          Sugerido por: {g.suggesterName}
-                        </span>
-                      </div>
-                    </label>
-                  ))}
-                </div>
-              )}
+                <>
+                  <div className="event-options">
+                    {event.gameOptions.map((g) => (
+                      <label
+                        key={g.id}
+                        className={`event-option${selectedGamesToVote.includes(g.id) ? ' selected' : ''}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedGamesToVote.includes(g.id)}
+                          onChange={(e) =>
+                            setSelectedGamesToVote(
+                              toggle(selectedGamesToVote, g.id, e.target.checked),
+                            )
+                          }
+                        />
+                        {g.thumb ? (
+                          <img src={g.thumb} alt="" className="event-game-thumb" />
+                        ) : (
+                          <div className="event-game-thumb" />
+                        )}
+                        <div className="event-option-info">
+                          <strong>{g.name}</strong>
+                          <span className="muted">Sugerido por {g.suggesterName}</span>
+                        </div>
+                        <VoteBar votes={gameVotes[g.id] || 0} total={voterCount} />
+                      </label>
+                    ))}
+                  </div>
 
-              {event.gameOptions && event.gameOptions.length > 0 && (
-                <button
-                  onClick={handleVoteGames}
-                  disabled={submitting}
-                  className="btn-primary"
-                  style={{ width: '100%', padding: '15px', fontSize: '1.1rem' }}
-                >
-                  {submitting ? 'Registrando...' : 'Confirmar Votos'}
-                </button>
-              )}
-
-              {canManageEvent && event.gameOptions && event.gameOptions.length > 0 && (
-                <div
-                  style={{
-                    marginTop: '30px',
-                    paddingTop: '30px',
-                    borderTop: '1px solid var(--border-color)',
-                    textAlign: 'center',
-                  }}
-                >
-                  <p style={{ color: 'var(--text-secondary)', marginBottom: '15px' }}>
-                    Quando todos tiverem votado, escolha os jogos da mesa e confirme a jogatina:
-                  </p>
                   <button
-                    onClick={openCloseGames}
-                    className="btn-primary"
-                    style={{ background: '#059669', width: '100%' }}
+                    onClick={handleVoteGames}
+                    disabled={submitting}
+                    className="btn-primary btn-block"
                   >
-                    Encerrar Votação de Jogos &rarr;
+                    {submitting ? 'Registrando...' : 'Confirmar votos'}
                   </button>
-                </div>
+
+                  {canManageEvent && (
+                    <div className="event-close-step">
+                      <p className="muted">
+                        Quando todos tiverem votado, escolha os jogos da mesa e confirme a jogatina:
+                      </p>
+                      <button onClick={openCloseGames} className="btn-success btn-block">
+                        Encerrar votação de jogos &rarr;
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
-            </div>
-          ) : (
-            <div
-              style={{
-                background: 'var(--bg-tertiary)',
-                padding: '20px',
-                borderRadius: 'var(--radius-md)',
-                border: '1px solid var(--border-color)',
-              }}
-            >
-              <h2 style={{ marginBottom: '20px' }}>Jogos da Mesa</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            </section>
+          )}
+
+          {event.status === 'CONFIRMED' && (
+            <section className="card">
+              <h2 className="event-subtitle">Jogos da mesa</h2>
+              <div className="event-options">
                 {(event.gameOptions || [])
                   .filter((g) => event.finalGameIds?.includes(g.id))
                   .map((g) => (
-                    <div
-                      key={g.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '15px',
-                        padding: '15px',
-                        background: 'var(--bg-secondary)',
-                        borderRadius: 'var(--radius-sm)',
-                      }}
-                    >
-                      <img
-                        src={g.thumb}
-                        alt={g.name}
-                        style={{
-                          width: '50px',
-                          height: '50px',
-                          objectFit: 'cover',
-                          borderRadius: 'var(--radius-sm)',
-                        }}
-                      />
-                      <div style={{ flex: 1 }}>
-                        <strong style={{ display: 'block', fontSize: '1.1rem' }}>{g.name}</strong>
-                        <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
-                          Leva: {g.suggesterName}
-                        </span>
+                    <div key={g.id} className="event-option">
+                      {g.thumb ? (
+                        <img src={g.thumb} alt="" className="event-game-thumb" />
+                      ) : (
+                        <div className="event-game-thumb" />
+                      )}
+                      <div className="event-option-info">
+                        <strong>{g.name}</strong>
+                        <span className="muted">Leva: {g.suggesterName}</span>
                       </div>
                     </div>
                   ))}
               </div>
-            </div>
+            </section>
           )}
-        </section>
-      )}
-
-      {/* Modal de Edição omitido pra limpar espaço, mantendo a logica anterior */}
-      {showEditModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--bg-secondary)',
-              borderRadius: 'var(--radius-md)',
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: '20px',
-            }}
-          >
-            <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Editar Evento</h2>
-            <form onSubmit={handleUpdateEvent}>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '5px' }}>Título do Evento</label>
-                <input
-                  required
-                  type="text"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    borderRadius: 'var(--radius-sm)',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-tertiary)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-              </div>
-
-              <div
-                style={{
-                  marginBottom: '30px',
-                  padding: '15px',
-                  background: 'var(--bg-tertiary)',
-                  borderRadius: 'var(--radius-md)',
-                }}
-              >
-                <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>
-                  Opções de Datas e Horários
-                </label>
-                {editDateInputs.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      display: 'flex',
-                      gap: '10px',
-                      marginBottom: '10px',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                    }}
-                  >
-                    <input
-                      required={idx === 0}
-                      type="date"
-                      value={item.date}
-                      onChange={(e) => {
-                        const n = [...editDateInputs];
-                        n[idx].date = e.target.value;
-                        setEditDateInputs(n);
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: '10px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-primary)',
-                        color: 'var(--text-primary)',
-                        colorScheme: 'dark',
-                      }}
-                    />
-                    <input
-                      required={idx === 0}
-                      type="time"
-                      value={item.startTime}
-                      onChange={(e) => {
-                        const n = [...editDateInputs];
-                        n[idx].startTime = e.target.value;
-                        setEditDateInputs(n);
-                      }}
-                      style={{
-                        width: '120px',
-                        padding: '10px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-primary)',
-                        color: 'var(--text-primary)',
-                        colorScheme: 'dark',
-                      }}
-                    />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEditDateInputs([
-                      ...editDateInputs,
-                      { id: Date.now().toString(), date: '', startTime: '', endTime: '' },
-                    ])
-                  }
-                  style={{
-                    background: 'transparent',
-                    color: 'var(--accent-primary)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                    marginTop: '10px',
-                  }}
-                >
-                  + Adicionar outra data
-                </button>
-              </div>
-
-              <div
-                style={{
-                  marginBottom: '30px',
-                  padding: '15px',
-                  background: 'var(--bg-tertiary)',
-                  borderRadius: 'var(--radius-md)',
-                }}
-              >
-                <label style={{ display: 'block', marginBottom: '15px', fontWeight: 'bold' }}>
-                  Opções de Locais
-                </label>
-                {editLocationInputs.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      marginBottom: '15px',
-                      padding: '15px',
-                      background: 'var(--bg-primary)',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-color)',
-                    }}
-                  >
-                    {favorites.length > 0 && (
-                      <div
-                        style={{
-                          marginBottom: '10px',
-                          display: 'flex',
-                          gap: '5px',
-                          overflowX: 'auto',
-                          paddingBottom: '5px',
-                        }}
-                      >
-                        {favorites.map((f) => (
-                          <button
-                            type="button"
-                            key={f.id}
-                            onClick={() => {
-                              const n = [...editLocationInputs];
-                              n[idx].name = f.name;
-                              n[idx].address = f.address;
-                              setEditLocationInputs(n);
-                              toast.success('Local carregado!');
-                            }}
-                            style={{
-                              fontSize: '0.75rem',
-                              padding: '4px 8px',
-                              borderRadius: 'var(--radius-full)',
-                              background: 'var(--accent-primary-transparent)',
-                              color: 'var(--accent-primary)',
-                              border: 'none',
-                              whiteSpace: 'nowrap',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            ⭐ {f.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    <input
-                      required={idx === 0}
-                      type="text"
-                      value={item.name}
-                      onChange={(e) => {
-                        const n = [...editLocationInputs];
-                        n[idx].name = e.target.value;
-                        setEditLocationInputs(n);
-                      }}
-                      placeholder="Nome (Ex: Casa do Edu)"
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        marginBottom: '10px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-tertiary)',
-                        color: 'var(--text-primary)',
-                      }}
-                    />
-                    <input
-                      required={idx === 0}
-                      type="text"
-                      value={item.address}
-                      onChange={(e) => {
-                        const n = [...editLocationInputs];
-                        n[idx].address = e.target.value;
-                        setEditLocationInputs(n);
-                      }}
-                      placeholder="Endereço Completo"
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        marginBottom: '10px',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-tertiary)',
-                        color: 'var(--text-primary)',
-                      }}
-                    />
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={() =>
-                    setEditLocationInputs([
-                      ...editLocationInputs,
-                      { id: Date.now().toString(), name: '', address: '', saveFavorite: false },
-                    ])
-                  }
-                  style={{
-                    background: 'transparent',
-                    color: 'var(--accent-primary)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  + Adicionar outro local
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="btn-danger"
-                  style={{ background: 'transparent', border: 'none' }}
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="btn-primary">
-                  Atualizar Evento
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
-      )}
 
-      {/* Modal Sugerir Jogos */}
-      {showSuggestGamesModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
-        >
-          <div
-            style={{
-              background: 'var(--bg-secondary)',
-              borderRadius: 'var(--radius-md)',
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: '20px',
-            }}
-          >
-            <h2 style={{ marginTop: 0, marginBottom: '20px' }}>Sugerir Jogos da Minha Ludoteca</h2>
+        <aside className="event-aside">
+          {event.status !== 'CONFIRMED' && (
+            <section className="card">
+              <h2 className="event-subtitle">
+                Votaram {voterCount} de {members.length}
+              </h2>
+              <ul className="event-voters">
+                {members.map((m) => (
+                  <li key={m.id}>
+                    <span>{m.name}</span>
+                    {phaseVotes[m.id] ? (
+                      <span className="event-voted">✓ votou</span>
+                    ) : (
+                      <span className="muted">pendente</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-            {loadingMyGames ? (
-              <p>Carregando sua Ludoteca...</p>
-            ) : myGames.length === 0 ? (
-              <p>Sua ludoteca está vazia. Adicione jogos primeiro!</p>
-            ) : (
+          <section className="card event-actions">
+            <button onClick={copyResults} className="btn-secondary btn-block">
+              📋 Copiar resumo para o WhatsApp
+            </button>
+            {canManageEvent && event.status !== 'CONFIRMED' && (
+              <button onClick={handleForceReminders} className="btn-secondary btn-block">
+                🔔 Cobrar quem não votou
+              </button>
+            )}
+            {canManageEvent && event.status === 'VOTING_DATE' && (
               <>
-                <button
-                  type="button"
-                  onClick={() => setSelectedGamesToSuggest(myGames.map((g) => g.id))}
-                  style={{
-                    background: 'transparent',
-                    color: 'var(--accent-primary)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    marginBottom: '15px',
-                    fontWeight: 'bold',
-                  }}
-                >
-                  Selecionar Todos
+                <button onClick={() => setShowEditModal(true)} className="btn-secondary btn-block">
+                  ✏️ Editar evento
                 </button>
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '10px',
-                    marginBottom: '30px',
-                    maxHeight: '300px',
-                    overflowY: 'auto',
-                  }}
-                >
-                  {myGames.map((g) => (
-                    <label
-                      key={g.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '15px',
-                        cursor: 'pointer',
-                        padding: '10px',
-                        background: 'var(--bg-tertiary)',
-                        borderRadius: 'var(--radius-sm)',
-                        border: selectedGamesToSuggest.includes(g.id)
-                          ? '1px solid var(--accent-primary)'
-                          : '1px solid transparent',
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selectedGamesToSuggest.includes(g.id)}
-                        onChange={(e) => {
-                          if (e.target.checked)
-                            setSelectedGamesToSuggest([...selectedGamesToSuggest, g.id]);
-                          else
-                            setSelectedGamesToSuggest(
-                              selectedGamesToSuggest.filter((id) => id !== g.id),
-                            );
-                        }}
-                        style={{ accentColor: 'var(--accent-primary)' }}
-                      />
-                      <img
-                        src={g.image || ''}
-                        alt={g.name}
-                        style={{
-                          width: '40px',
-                          height: '40px',
-                          objectFit: 'cover',
-                          borderRadius: 'var(--radius-sm)',
-                        }}
-                      />
-                      <strong style={{ flex: 1, fontSize: '1rem' }}>{g.name}</strong>
-                    </label>
-                  ))}
-                </div>
+                <button onClick={() => setConfirmAction('delete')} className="btn-danger btn-block">
+                  🗑️ Excluir evento
+                </button>
               </>
             )}
+          </section>
+        </aside>
+      </div>
 
-            <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setShowSuggestGamesModal(false)}
-                className="btn-danger"
-                style={{ background: 'transparent', border: 'none' }}
-              >
+      {showEditModal && (
+        <EventFormModal
+          heading="Editar evento"
+          submitLabel="Atualizar evento"
+          initial={{
+            title: event.title,
+            dates: event.dateOptions,
+            locations: event.locationOptions,
+          }}
+          favorites={favorites}
+          onSubmit={handleUpdateEvent}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
+
+      {confirmAction === 'delete' && (
+        <Modal
+          title="Excluir evento?"
+          size="sm"
+          onClose={() => setConfirmAction(null)}
+          footer={
+            <>
+              <button onClick={() => setConfirmAction(null)} className="btn-secondary">
+                Cancelar
+              </button>
+              <button onClick={handleDeleteEvent} className="btn-danger">
+                Sim, excluir
+              </button>
+            </>
+          }
+        >
+          <p className="muted">Os votos serão perdidos. Esta ação não pode ser desfeita.</p>
+        </Modal>
+      )}
+
+      {confirmAction === 'advance' && (
+        <Modal
+          title="Encerrar votação de data e local?"
+          size="sm"
+          onClose={() => setConfirmAction(null)}
+          footer={
+            <>
+              <button onClick={() => setConfirmAction(null)} className="btn-secondary">
+                Cancelar
+              </button>
+              <button onClick={handleAdvanceToGames} className="btn-success">
+                Confirmar e ir para jogos
+              </button>
+            </>
+          }
+        >
+          <p className="muted">
+            A jogatina fica marcada para{' '}
+            <strong>
+              {formatDate(event.dateOptions.find((d) => d.id === selectedDate)?.date ?? '')}
+            </strong>{' '}
+            em <strong>{event.locationOptions.find((l) => l.id === selectedLocation)?.name}</strong>
+            , as opções que você selecionou. Depois disso ninguém mais vota em data e local.
+          </p>
+        </Modal>
+      )}
+
+      {showSuggestGamesModal && (
+        <Modal
+          title="Sugerir jogos da minha ludoteca"
+          onClose={() => setShowSuggestGamesModal(false)}
+          footer={
+            <>
+              <button onClick={() => setShowSuggestGamesModal(false)} className="btn-secondary">
                 Cancelar
               </button>
               <button
@@ -1220,181 +702,90 @@ export const EventDetails = () => {
                 disabled={submitting || myGames.length === 0}
                 className="btn-primary"
               >
-                Enviar para Mesa
+                Enviar para a mesa
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Encerrar Votação de Jogos */}
-      {showCloseGamesModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
+            </>
+          }
         >
-          <div
-            style={{
-              background: 'var(--bg-secondary)',
-              borderRadius: 'var(--radius-md)',
-              width: '100%',
-              maxWidth: '600px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: '20px',
-            }}
-          >
-            <h2 style={{ marginTop: 0, marginBottom: '10px' }}>Encerrar Votação de Jogos</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              Marque os jogos que vão para a mesa. Depois de confirmar, ninguém mais vota.
-            </p>
-
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-                marginBottom: '30px',
-                maxHeight: '300px',
-                overflowY: 'auto',
-              }}
-            >
-              {rankGameOptions(event.gameOptions, event.votesGames).map(({ game, votes }) => (
-                <label
-                  key={game.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '15px',
-                    cursor: 'pointer',
-                    padding: '10px',
-                    background: 'var(--bg-tertiary)',
-                    borderRadius: 'var(--radius-sm)',
-                    border: finalGameSelection.includes(game.id)
-                      ? '1px solid var(--accent-primary)'
-                      : '1px solid transparent',
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={finalGameSelection.includes(game.id)}
-                    onChange={(e) => {
-                      if (e.target.checked) setFinalGameSelection([...finalGameSelection, game.id]);
-                      else setFinalGameSelection(finalGameSelection.filter((id) => id !== game.id));
-                    }}
-                    style={{ accentColor: 'var(--accent-primary)' }}
-                  />
-                  <strong style={{ flex: 1, fontSize: '1rem' }}>{game.name}</strong>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                    {votes} voto(s)
-                  </span>
-                </label>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
+          {loadingMyGames ? (
+            <p className="empty-state">Carregando sua ludoteca...</p>
+          ) : myGames.length === 0 ? (
+            <p className="empty-state">Sua ludoteca está vazia. Adicione jogos primeiro!</p>
+          ) : (
+            <>
               <button
                 type="button"
-                onClick={() => setShowCloseGamesModal(false)}
-                className="btn-danger"
-                style={{ background: 'transparent', border: 'none' }}
+                onClick={() => setSelectedGamesToSuggest(myGames.map((g) => g.id))}
+                className="btn-link event-select-all"
               >
+                Selecionar todos
+              </button>
+              <div className="event-options">
+                {myGames.map((g) => (
+                  <label
+                    key={g.id}
+                    className={`event-option${selectedGamesToSuggest.includes(g.id) ? ' selected' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedGamesToSuggest.includes(g.id)}
+                      onChange={(e) =>
+                        setSelectedGamesToSuggest(
+                          toggle(selectedGamesToSuggest, g.id, e.target.checked),
+                        )
+                      }
+                    />
+                    {g.image ? (
+                      <img src={g.image} alt="" className="event-game-thumb" />
+                    ) : (
+                      <div className="event-game-thumb" />
+                    )}
+                    <strong className="event-option-info">{g.name}</strong>
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
+
+      {showCloseGamesModal && (
+        <Modal
+          title="Encerrar votação de jogos"
+          onClose={() => setShowCloseGamesModal(false)}
+          footer={
+            <>
+              <button onClick={() => setShowCloseGamesModal(false)} className="btn-secondary">
                 Cancelar
               </button>
               <button onClick={handleConfirmEvent} disabled={submitting} className="btn-primary">
-                {submitting ? 'Confirmando...' : 'Confirmar Jogatina'}
+                {submitting ? 'Confirmando...' : 'Confirmar jogatina'}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal Resultados Parciais */}
-      {showResultsModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
+            </>
+          }
         >
-          <div
-            style={{
-              background: 'var(--bg-secondary)',
-              borderRadius: 'var(--radius-md)',
-              width: '100%',
-              maxWidth: '500px',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              padding: '20px',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                marginBottom: '20px',
-              }}
-            >
-              <h2 style={{ marginTop: 0, margin: 0 }}>📊 Parciais da Votação</h2>
-              <button
-                onClick={() => setShowResultsModal(false)}
-                style={{
-                  background: 'transparent',
-                  color: 'var(--text-secondary)',
-                  border: 'none',
-                  fontSize: '1.2rem',
-                  cursor: 'pointer',
-                }}
+          <p className="muted event-hint">
+            Marque os jogos que vão para a mesa. Depois de confirmar, ninguém mais vota.
+          </p>
+          <div className="event-options">
+            {rankGameOptions(event.gameOptions, event.votesGames).map(({ game, votes }) => (
+              <label
+                key={game.id}
+                className={`event-option${finalGameSelection.includes(game.id) ? ' selected' : ''}`}
               >
-                ✖
-              </button>
-            </div>
-
-            <div
-              style={{
-                background: 'var(--bg-tertiary)',
-                padding: '15px',
-                borderRadius: 'var(--radius-sm)',
-                marginBottom: '20px',
-                whiteSpace: 'pre-wrap',
-                fontFamily: 'monospace',
-                fontSize: '0.9rem',
-                color: 'var(--text-primary)',
-              }}
-            >
-              {getResultsReport()}
-            </div>
-
-            <button
-              onClick={copyResults}
-              className="btn-primary"
-              style={{ width: '100%', background: '#10b981' }}
-            >
-              📋 Copiar para o WhatsApp
-            </button>
+                <input
+                  type="checkbox"
+                  checked={finalGameSelection.includes(game.id)}
+                  onChange={(e) =>
+                    setFinalGameSelection(toggle(finalGameSelection, game.id, e.target.checked))
+                  }
+                />
+                <strong className="event-option-info">{game.name}</strong>
+                <span className="muted">{votes} voto(s)</span>
+              </label>
+            ))}
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

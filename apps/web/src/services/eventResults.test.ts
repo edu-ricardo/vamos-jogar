@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { countGameVotes, rankGameOptions } from './eventResults';
+import { countChoices, countGameVotes, rankGameOptions } from './eventResults';
 
 const game = (id: string) => ({ id, name: id, thumb: '', suggesterId: 'ana' });
 
@@ -29,5 +29,12 @@ describe('rankGameOptions', () => {
   it('em empate mantém a ordem de sugestão', () => {
     const ranked = rankGameOptions([game('a'), game('b')], { ana: ['b'], bia: ['a'] });
     expect(ranked.map((r) => r.game.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('countChoices', () => {
+  it('conta quantas pessoas escolheram cada opção', () => {
+    expect(countChoices({ ana: 'd1', bia: 'd1', caio: 'd2' })).toEqual({ d1: 2, d2: 1 });
+    expect(countChoices(undefined)).toEqual({});
   });
 });

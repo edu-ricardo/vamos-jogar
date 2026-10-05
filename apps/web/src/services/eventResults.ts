@@ -32,3 +32,13 @@ export const rankGameOptions = (
     .map((game) => ({ game, votes: counts[game.id] || 0 }))
     .sort((a, b) => b.votes - a.votes);
 };
+
+// Votos por opção de data ou local (cada pessoa escolhe uma opção)
+export const countChoices = (votes: Record<string, string> = {}): Record<string, number> =>
+  Object.values(votes).reduce(
+    (acc, optionId) => {
+      acc[optionId] = (acc[optionId] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
