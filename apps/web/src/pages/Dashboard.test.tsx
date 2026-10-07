@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { resetAuth } from '../test/auth';
 import { renderPage } from '../test/renderPage';
 import { groupService } from '../services/groupService';
@@ -273,5 +274,47 @@ describe('Início — carregamento e estados vazios', () => {
 
     const link = await screen.findByRole('link', { name: 'Criar um grupo' });
     expect(link.getAttribute('href')).toBe('/grupos');
+  });
+});
+
+describe('Início — calendário', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchUserGroups).mockResolvedValue([
+      { id: 'g1', name: 'Sexta', adminId: 'u-edu', inviteToken: 'tok' },
+    ]);
+    vi.mocked(eventService.getAttendance).mockResolvedValue([]);
+  });
+
+  it('enquanto carrega mostra o esqueleto do calendário e depois o mês com os eventos', async () => {
+    const events = deferred<never[]>();
+    vi.mocked(eventService.fetchGroupEvents).mockReturnValue(events.promise);
+    renderPage(<Dashboard />);
+
+    expect(screen.getByText('Carregando o calendário')).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Calendário' })).toBeNull();
+
+    events.resolve([defined('e1', 'Noite dos euros', isoDay(1))] as never[]);
+
+    const calendar = within(await screen.findByRole('region', { name: 'Calendário' }));
+    expect(calendar.getAllByRole('columnheader')).toHaveLength(7);
+    expect(screen.queryByText('Carregando o calendário')).toBeNull();
+  });
+
+  it('o dia do próximo evento fica marcado e mostra o evento ao tocar', async () => {
+    const user = userEvent.setup();
+    const tomorrow = isoDay(1);
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([
+      defined('e1', 'Noite dos euros', tomorrow),
+    ]);
+    renderPage(<Dashboard />);
+
+    const calendar = within(await screen.findByRole('region', { name: 'Calendário' }));
+    await user.click(await calendar.findByRole('button', { name: /1 evento$/ }));
+
+    expect(calendar.getByRole('link', { name: 'Noite dos euros' }).getAttribute('href')).toBe(
+      '/event/g1/e1',
+    );
   });
 });

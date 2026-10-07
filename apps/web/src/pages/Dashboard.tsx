@@ -15,6 +15,7 @@ import {
 } from '../services/dashboardInsights';
 import { SkeletonCard, SkeletonRows } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { MonthCalendar } from '../components/MonthCalendar';
 import './Dashboard.scss';
 
 // Quantos dos próximos eventos têm a presença consultada (uma chamada à API por evento)
@@ -285,44 +286,52 @@ export const Dashboard = () => {
           </section>
         </div>
 
-        <section className="card">
-          <div className="dashboard-section-title">
-            <h2>Seus grupos</h2>
-            <Link to="/grupos" className="btn-link">
-              Ver todos
-            </Link>
-          </div>
-          {groups.length === 0 && loadingEvents ? (
-            <SkeletonRows label="Carregando grupos" rows={2} thumb={false} />
-          ) : groups.length === 0 ? (
-            <EmptyState
-              icon="👥"
-              title="Você ainda não participa de nenhum grupo."
-              action={
-                <Link to="/grupos" className="btn-primary btn-sm">
-                  Criar um grupo
-                </Link>
-              }
-              compact
-            >
-              Crie um grupo ou peça um convite a quem organiza as jogatinas.
-            </EmptyState>
+        <div className="dashboard-side">
+          {loadingEvents ? (
+            <SkeletonCard label="Carregando o calendário" lines={5} />
           ) : (
-            <ul className="dashboard-groups">
-              {groups.map((g) => (
-                <li key={g.id}>
-                  <Link to={`/group/${g.id}`}>
-                    <span>{g.name}</span>
-                    <span className="muted">&rarr;</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <MonthCalendar entries={entries} today={today} />
           )}
-          <Link to="/ludoteca" className="btn-secondary btn-block dashboard-ludoteca">
-            🎲 Minha ludoteca
-          </Link>
-        </section>
+
+          <section className="card">
+            <div className="dashboard-section-title">
+              <h2>Seus grupos</h2>
+              <Link to="/grupos" className="btn-link">
+                Ver todos
+              </Link>
+            </div>
+            {groups.length === 0 && loadingEvents ? (
+              <SkeletonRows label="Carregando grupos" rows={2} thumb={false} />
+            ) : groups.length === 0 ? (
+              <EmptyState
+                icon="👥"
+                title="Você ainda não participa de nenhum grupo."
+                action={
+                  <Link to="/grupos" className="btn-primary btn-sm">
+                    Criar um grupo
+                  </Link>
+                }
+                compact
+              >
+                Crie um grupo ou peça um convite a quem organiza as jogatinas.
+              </EmptyState>
+            ) : (
+              <ul className="dashboard-groups">
+                {groups.map((g) => (
+                  <li key={g.id}>
+                    <Link to={`/group/${g.id}`}>
+                      <span>{g.name}</span>
+                      <span className="muted">&rarr;</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <Link to="/ludoteca" className="btn-secondary btn-block dashboard-ludoteca">
+              🎲 Minha ludoteca
+            </Link>
+          </section>
+        </div>
       </div>
     </div>
   );

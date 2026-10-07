@@ -112,6 +112,13 @@
   margin-bottom: 20px;
 }
 
+.dashboard-side {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
 .dashboard-main {
   display: flex;
   flex-direction: column;

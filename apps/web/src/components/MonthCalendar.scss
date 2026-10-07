@@ -1,0 +1,163 @@
+.month-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 2px;
+  }
+
+  th {
+    padding: 4px 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+
+    abbr {
+      text-decoration: none;
+    }
+  }
+}
+
+.month-calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+
+  h2 {
+    flex: 1;
+    text-align: center;
+    font-size: 1rem;
+
+    // "outubro de 2026" → "Outubro de 2026" (capitalize também poria o "De" em maiúscula)
+    &::first-letter {
+      text-transform: uppercase;
+    }
+  }
+}
+
+.month-calendar-today {
+  align-self: center;
+}
+
+.month-cell {
+  height: 42px;
+  padding: 0;
+  text-align: center;
+  vertical-align: middle;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+
+  &.outside {
+    opacity: 0.4;
+  }
+
+  &.past:not(.selected) {
+    color: var(--text-secondary);
+  }
+
+  &.today .month-day,
+  &.today button > span:first-child {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: var(--radius-full);
+    background: var(--accent-primary);
+    color: var(--btn-text);
+    font-weight: 700;
+  }
+
+  button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    width: 100%;
+    height: 100%;
+    border-radius: var(--radius-sm);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--bg-tertiary);
+    }
+  }
+
+  &.selected button {
+    background: var(--accent-primary-transparent);
+    box-shadow: inset 0 0 0 1px var(--accent-primary);
+  }
+}
+
+.month-dots {
+  display: flex;
+  gap: 3px;
+  height: 6px;
+}
+
+.month-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  vertical-align: middle;
+}
+
+.month-dot-confirmed {
+  background: var(--accent-primary);
+}
+
+.month-dot-option {
+  border: 1.5px solid var(--accent-primary);
+}
+
+.month-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 0.75rem;
+
+  .month-dot:not(:first-child) {
+    margin-left: 8px;
+  }
+}
+
+.month-day-events {
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+
+  h3 {
+    margin-bottom: 8px;
+  }
+
+  ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  li {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  a {
+    font-weight: 600;
+
+    &:hover {
+      color: var(--accent-primary);
+    }
+  }
+}
