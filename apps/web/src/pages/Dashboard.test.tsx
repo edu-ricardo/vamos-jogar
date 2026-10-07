@@ -318,3 +318,14 @@ describe('Início — calendário', () => {
     );
   });
 });
+
+describe('Início — acessibilidade', () => {
+  it('põe o título da aba', async () => {
+    resetAuth();
+    vi.mocked(groupService.fetchUserGroups).mockResolvedValue([]);
+    renderPage(<Dashboard />);
+
+    await screen.findByText(/não participa de nenhum grupo/);
+    expect(document.title).toBe('Início · Vamos Jogar');
+  });
+});

@@ -6,8 +6,10 @@ import toast from 'react-hot-toast';
 import { SkeletonRows } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import './Grupos.scss';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export const Grupos = () => {
+  usePageTitle('Grupos');
   const { user } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [newGroupName, setNewGroupName] = useState('');
@@ -61,6 +63,7 @@ export const Grupos = () => {
       <form onSubmit={handleCreateGroup} className="card grupos-create">
         <input
           type="text"
+          aria-label="Nome do novo grupo"
           placeholder="Nome do novo grupo..."
           value={newGroupName}
           onChange={(e) => setNewGroupName(e.target.value)}

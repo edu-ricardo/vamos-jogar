@@ -10,6 +10,7 @@ import { SkeletonGrid, SkeletonRows } from '../components/Skeleton';
 import { GameCover } from '../components/GameCover';
 import { EmptyState } from '../components/EmptyState';
 import './Ludoteca.scss';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 // Capa do jogo; sem imagem, um quadrado colorido com as iniciais
 const GameThumb = ({ game }: { game: Game }) => (
@@ -17,6 +18,7 @@ const GameThumb = ({ game }: { game: Game }) => (
 );
 
 export const Ludoteca = () => {
+  usePageTitle('Ludoteca');
   const { user } = useAuth();
   const [query, setQuery] = useState('');
   const [source, setSource] = useState<'ludopedia' | 'bgg'>('ludopedia');
@@ -318,6 +320,7 @@ export const Ludoteca = () => {
           <form onSubmit={handleSearch} className="ludoteca-search-form">
             <input
               type="text"
+              aria-label="Nome do jogo"
               placeholder="Nome do jogo (ex: Catan)..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -556,6 +559,7 @@ export const Ludoteca = () => {
               <form onSubmit={handleExpSearch} className="ludoteca-search-form">
                 <input
                   type="text"
+                  aria-label="Nome da expansão"
                   placeholder="Nome da expansão (deixe em branco para ver todas)..."
                   value={expSearchQuery}
                   onChange={(e) => setExpSearchQuery(e.target.value)}

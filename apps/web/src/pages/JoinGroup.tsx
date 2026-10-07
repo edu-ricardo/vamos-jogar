@@ -4,8 +4,10 @@ import { useAuth } from '../context/AuthContext';
 import { groupService } from '../services/groupService';
 import { ApiError } from '../services/apiClient';
 import './JoinGroup.scss';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export const JoinGroup = () => {
+  usePageTitle('Convite para o grupo');
   const { token } = useParams<{ token: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();

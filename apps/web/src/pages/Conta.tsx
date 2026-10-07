@@ -6,8 +6,10 @@ import { NotificationSettings } from '../components/NotificationSettings';
 import { Modal } from '../components/Modal';
 import toast from 'react-hot-toast';
 import './Conta.scss';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export const Conta = () => {
+  usePageTitle('Conta');
   const { user, logout, updateDisplayName, changePassword } = useAuth();
   const [nickname, setNickname] = useState(user?.displayName || '');
   const [loading, setLoading] = useState(false);

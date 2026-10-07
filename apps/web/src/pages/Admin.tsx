@@ -14,6 +14,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Avatar } from '../components/Avatar';
 import { EVENT_STATUS_LABEL } from '../services/eventResults';
 import './Admin.scss';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 type Tab = 'users' | 'groups' | 'events' | 'logs';
 
@@ -40,6 +41,7 @@ type PendingAction =
   | { kind: 'removeMember'; group: AdminGroup; member: { id: string; name: string } };
 
 export const Admin = () => {
+  usePageTitle('Administração');
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('users');
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -150,6 +152,7 @@ export const Admin = () => {
           <input
             type="search"
             className="admin-filter"
+            aria-label="Buscar usuários"
             placeholder="Buscar por nome ou e-mail..."
             value={filter}
             onChange={(e) => setFilter(e.target.value)}

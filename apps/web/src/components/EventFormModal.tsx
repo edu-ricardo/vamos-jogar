@@ -163,6 +163,7 @@ export const EventFormModal = ({
                 type="text"
                 value={item.name}
                 onChange={(e) => updateLocation(idx, { name: e.target.value })}
+                aria-label="Nome do local"
                 placeholder="Nome (Ex: Casa do Edu)"
               />
               <input
@@ -170,6 +171,7 @@ export const EventFormModal = ({
                 type="text"
                 value={item.address}
                 onChange={(e) => updateLocation(idx, { address: e.target.value })}
+                aria-label="Endereço do local"
                 placeholder="Endereço completo (para o Waze/Maps)"
               />
               <label className="event-form-check">

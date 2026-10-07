@@ -83,12 +83,12 @@
     gap: 20px;
 
     .error-message {
-      background: rgba(239, 68, 68, 0.1);
-      color: #ef4444;
+      background: var(--danger-soft);
+      color: var(--danger);
       padding: 12px;
       border-radius: var(--radius-sm);
       font-size: 0.85rem;
-      border: 1px solid rgba(239, 68, 68, 0.2);
+      border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent);
       text-align: center;
     }
 
@@ -115,10 +115,6 @@
         &:focus {
           border-color: var(--accent-primary);
           box-shadow: var(--shadow-glow);
-        }
-
-        &::placeholder {
-          color: rgba(161, 161, 170, 0.4);
         }
       }
     }

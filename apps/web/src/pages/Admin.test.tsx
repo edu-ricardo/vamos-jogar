@@ -279,3 +279,15 @@ describe('Admin — avatares', () => {
     expect(rowOf('Edu').getByText('E').className).toContain('avatar');
   });
 });
+
+describe('Admin — acessibilidade', () => {
+  it('título da aba e filtro de usuários com rótulo próprio', async () => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(adminService.listUsers).mockResolvedValue([]);
+    renderPage(<Admin />);
+
+    expect(await screen.findByLabelText('Buscar usuários')).toBeTruthy();
+    expect(document.title).toBe('Administração · Vamos Jogar');
+  });
+});

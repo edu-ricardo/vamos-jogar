@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import './Login.scss';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 export const Login: React.FC = () => {
+  usePageTitle('Entrar');
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
 
   const [isRegister, setIsRegister] = useState(false);
@@ -60,9 +62,11 @@ export const Login: React.FC = () => {
           {errorMsg && <div className="error-message">{errorMsg}</div>}
 
           <div className="input-group">
-            <label>E-mail</label>
+            <label htmlFor="login-email">E-mail</label>
             <input
+              id="login-email"
               type="email"
+              autoComplete="email"
               placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -70,9 +74,11 @@ export const Login: React.FC = () => {
             />
           </div>
           <div className="input-group">
-            <label>Senha</label>
+            <label htmlFor="login-password">Senha</label>
             <input
+              id="login-password"
               type="password"
+              autoComplete={isRegister ? 'new-password' : 'current-password'}
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}

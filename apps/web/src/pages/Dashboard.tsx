@@ -18,6 +18,7 @@ import { EmptyState } from '../components/EmptyState';
 import { MonthCalendar } from '../components/MonthCalendar';
 import { InstallPrompt } from '../components/InstallPrompt';
 import './Dashboard.scss';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 // Quantos dos próximos eventos têm a presença consultada (uma chamada à API por evento)
 const MAX_RSVP_CHECKS = 5;
@@ -88,6 +89,7 @@ const describeEntry = ({ event, groupName }: DashboardEntry, today: string) => {
 };
 
 export const Dashboard = () => {
+  usePageTitle('Início');
   const { user } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [entries, setEntries] = useState<DashboardEntry[]>([]);

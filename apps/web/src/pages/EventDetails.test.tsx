@@ -821,3 +821,26 @@ describe('Evento — avatares', () => {
     expect(within(catan).getByText('C').className).toContain('game-cover');
   });
 });
+
+describe('Evento — acessibilidade', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchGroupMembers).mockResolvedValue(members);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    vi.mocked(eventService.getAttendance).mockResolvedValue([]);
+  });
+
+  it('o título da aba é o nome do evento', async () => {
+    await open(dateEvent());
+
+    expect(document.title).toBe('Jogatina de aniversário · Vamos Jogar');
+  });
+
+  it('cada barra de votos é lida como "N voto(s)" por leitores de tela', async () => {
+    await open(dateEvent());
+
+    expect(screen.getByRole('img', { name: '2 voto(s)' })).toBeTruthy();
+    expect(screen.getAllByRole('img', { name: '0 voto(s)' })).toHaveLength(2);
+  });
+});

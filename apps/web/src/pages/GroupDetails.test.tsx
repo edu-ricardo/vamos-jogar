@@ -442,3 +442,15 @@ describe('Grupo — avatares', () => {
     expect(within(panel).getByText('Ana')).toBeTruthy();
   });
 });
+
+describe('Grupo — acessibilidade', () => {
+  it('o título da aba é o nome do grupo', async () => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([]);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    await open('u-ana');
+
+    expect(document.title).toBe('Sexta · Vamos Jogar');
+  });
+});

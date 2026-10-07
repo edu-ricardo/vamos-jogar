@@ -34,6 +34,7 @@ import { EmptyState } from '../components/EmptyState';
 import { GameCover } from '../components/GameCover';
 import { Avatar } from '../components/Avatar';
 import './EventDetails.scss';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 const RSVP_BUTTONS: { status: AttendanceStatus; label: string }[] = [
   { status: 'yes', label: 'Vou' },
@@ -62,7 +63,7 @@ const VoteBar = ({
   total: number;
   unit?: string;
 }) => (
-  <div className="vote-bar" title={`${votes} ${unit}`}>
+  <div className="vote-bar" role="img" aria-label={`${votes} ${unit}`} title={`${votes} ${unit}`}>
     <div className="vote-bar-track">
       <div
         className="vote-bar-fill"
@@ -79,6 +80,7 @@ export const EventDetails = () => {
   const navigate = useNavigate();
 
   const [event, setEvent] = useState<Event | null>(null);
+  usePageTitle(event?.title ?? 'Evento');
   const [groupAdminId, setGroupAdminId] = useState('');
   const [groupName, setGroupName] = useState('');
   const [attendance, setAttendance] = useState<AttendanceAnswer[]>([]);

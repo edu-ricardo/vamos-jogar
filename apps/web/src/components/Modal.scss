@@ -1,4 +1,18 @@
+@keyframes modal-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
 .modal-overlay {
+  animation: modal-fade 0.15s ease-out;
   position: fixed;
   inset: 0;
   background: var(--overlay);
@@ -18,6 +32,11 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
+  animation: modal-rise 0.18s ease-out;
+
+  &:focus {
+    outline: none;
+  }
 
   &.modal-sm {
     max-width: 420px;

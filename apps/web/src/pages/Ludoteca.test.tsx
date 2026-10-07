@@ -289,3 +289,15 @@ describe('Ludoteca — capas', () => {
     expect(duel.getByText('7W')).toBeTruthy();
   });
 });
+
+describe('Ludoteca — acessibilidade', () => {
+  it('título da aba e campo de busca com rótulo próprio', async () => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(ludotecaService.fetchUserCollection).mockResolvedValue([]);
+    renderPage(<Ludoteca />);
+
+    expect(await screen.findByLabelText('Nome do jogo')).toBeTruthy();
+    expect(document.title).toBe('Ludoteca · Vamos Jogar');
+  });
+});

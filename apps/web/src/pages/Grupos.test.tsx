@@ -77,3 +77,15 @@ describe('Grupos — carregamento e estado vazio', () => {
     expect(screen.queryByText('Carregando grupos')).toBeNull();
   });
 });
+
+describe('Grupos — acessibilidade', () => {
+  it('título da aba e campo de nome com rótulo próprio (não só o placeholder)', async () => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchUserGroups).mockResolvedValue([]);
+    renderPage(<Grupos />);
+
+    expect(await screen.findByLabelText('Nome do novo grupo')).toBeTruthy();
+    expect(document.title).toBe('Grupos · Vamos Jogar');
+  });
+});

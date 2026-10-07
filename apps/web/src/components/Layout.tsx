@@ -19,13 +19,16 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="app-shell">
+      <a href="#conteudo" className="skip-link">
+        Pular para o conteúdo
+      </a>
       <aside className="app-sidebar">
         <Link to="/" className="app-brand">
           <span className="app-logo">VJ</span>
           <span className="app-brand-name">Vamos Jogar</span>
         </Link>
 
-        <nav className="app-nav">
+        <nav className="app-nav" aria-label="Principal">
           {navItems.map((item) => (
             <NavLink key={item.to} to={item.to} end={item.to === '/'} className="app-nav-link">
               <span aria-hidden="true">{item.icon}</span>
@@ -39,7 +42,9 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
         </button>
       </aside>
 
-      <main className="app-main">{children}</main>
+      <main id="conteudo" tabIndex={-1} className="app-main">
+        {children}
+      </main>
     </div>
   );
 };

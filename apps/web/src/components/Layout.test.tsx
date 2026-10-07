@@ -41,3 +41,25 @@ describe('Layout', () => {
     expect(fakeAuth.logout).toHaveBeenCalled();
   });
 });
+
+describe('Layout — acessibilidade', () => {
+  beforeEach(resetAuth);
+
+  it('tem o link "Pular para o conteúdo" apontando para a área principal', () => {
+    renderLayout();
+
+    const skip = screen.getByRole('link', { name: 'Pular para o conteúdo' });
+    expect(skip.getAttribute('href')).toBe('#conteudo');
+    const main = screen.getByRole('main');
+    expect(main.id).toBe('conteudo');
+    expect(main.getAttribute('tabindex')).toBe('-1');
+  });
+
+  it('a navegação é identificada como principal e marca a página atual', () => {
+    renderLayout();
+
+    expect(screen.getByRole('navigation', { name: 'Principal' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Início/ }).getAttribute('aria-current')).toBe('page');
+    expect(screen.getByRole('link', { name: /Grupos/ }).getAttribute('aria-current')).toBeNull();
+  });
+});

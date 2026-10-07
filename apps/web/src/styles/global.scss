@@ -27,7 +27,6 @@ button {
   font-family: inherit;
   cursor: pointer;
   border: none;
-  outline: none;
   background: none;
   &:active {
     transform: scale(0.98);
@@ -57,9 +56,9 @@ button {
 .btn-danger {
   display: inline-block;
   padding: 12px 24px;
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
-  border: 1px solid rgba(239, 68, 68, 0.3);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, transparent);
   border-radius: var(--radius-md);
   font-weight: 600;
   font-size: 1rem;
@@ -69,10 +68,10 @@ button {
   backdrop-filter: blur(10px);
 
   &:hover {
-    background: rgba(239, 68, 68, 0.2);
-    border-color: rgba(239, 68, 68, 0.5);
+    background: color-mix(in srgb, var(--danger) 18%, transparent);
+    border-color: color-mix(in srgb, var(--danger) 55%, transparent);
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--danger) 25%, transparent);
   }
 
   &:active {
@@ -117,8 +116,9 @@ textarea {
   color: var(--text-primary);
   transition: border-color var(--transition-fast);
 
-  &:focus {
-    outline: none;
+  &:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 1px;
     border-color: var(--accent-primary);
   }
 
@@ -185,7 +185,7 @@ input[type='radio'] {
 .btn-success {
   @extend .btn-primary;
   background: var(--success);
-  color: #fff;
+  color: var(--btn-text);
 
   &:hover {
     background: var(--success);
@@ -251,6 +251,41 @@ input[type='radio'] {
 @for $i from 0 through 7 {
   .tone-#{$i} {
     --tone: #{($i * 45 + 250) % 360};
+  }
+}
+
+// Foco do teclado sempre visível (o do mouse não ganha anel, só o de teclado e leitores)
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+// Quem pediu menos movimento no aparelho não recebe animações nem transições
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+// "Pular para o conteúdo": invisível até receber o foco do teclado
+.skip-link {
+  position: absolute;
+  left: 16px;
+  top: -100px;
+  z-index: 2000;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  background: var(--accent-primary);
+  color: var(--btn-text);
+  font-weight: 600;
+
+  &:focus {
+    top: 12px;
   }
 }
 

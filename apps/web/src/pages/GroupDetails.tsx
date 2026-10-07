@@ -22,6 +22,7 @@ import { EmptyState } from '../components/EmptyState';
 import { GameCover } from '../components/GameCover';
 import { Avatar } from '../components/Avatar';
 import './GroupDetails.scss';
+import { usePageTitle } from '../hooks/usePageTitle';
 
 // Quantas jogatinas anteriores aparecem antes de "Mostrar todas"
 const PAST_EVENTS_SHOWN = 5;
@@ -46,6 +47,7 @@ export const GroupDetails = () => {
   const [favorites, setFavorites] = useState<FavoriteLocation[]>([]);
 
   const [groupDetails, setGroupDetails] = useState<Group | null>(null);
+  usePageTitle(groupDetails?.name ?? 'Grupo');
   const [members, setMembers] = useState<{ id: string; name: string }[]>([]);
 
   // Member collection states
