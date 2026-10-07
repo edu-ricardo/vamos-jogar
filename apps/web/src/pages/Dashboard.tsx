@@ -2,94 +2,130 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { groupService, type Group } from '../services/groupService';
-import { eventService, type Event } from '../services/eventService';
+import { eventService, type AttendanceStatus } from '../services/eventService';
 import { EVENT_STATUS_LABEL } from '../services/eventResults';
+import { finalDateOf, finalLocationOf, todayLocal } from '../services/groupHistory';
+import {
+  describeCountdown,
+  displayDateOf,
+  nextEntry,
+  pendingActions,
+  upcomingEntries,
+  type DashboardEntry,
+} from '../services/dashboardInsights';
 import './Dashboard.scss';
+
+// Quantos dos próximos eventos têm a presença consultada (uma chamada à API por evento)
+const MAX_RSVP_CHECKS = 5;
+
+const RSVP_CHIP: Record<AttendanceStatus | 'none', string> = {
+  yes: 'Você vai',
+  maybe: 'Você marcou talvez',
+  no: 'Você não vai',
+  none: 'Você ainda não respondeu',
+};
 
 // "2026-10-09" → "out"
 const monthLabel = (date: string) =>
   new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
 
+interface CalendarItem {
+  title: string;
+  groupName: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+}
+
+const googleCalendarUrl = (item: CalendarItem) => {
+  const text = encodeURIComponent(`Jogatina: ${item.title} (${item.groupName})`);
+  const details = encodeURIComponent(`Evento do grupo ${item.groupName}.`);
+  const location = encodeURIComponent(item.location);
+
+  const startDate = item.date.replace(/-/g, '');
+  const startTime = item.startTime.replace(/:/g, '') + '00';
+  let endTime = '';
+
+  if (item.endTime) {
+    endTime = item.endTime.replace(/:/g, '') + '00';
+  } else {
+    const h = parseInt(item.startTime.split(':')[0]);
+    const m = item.startTime.split(':')[1];
+    const endH = Math.min(23, h + 4)
+      .toString()
+      .padStart(2, '0');
+    endTime = endH + m + '00';
+  }
+
+  const dates = `${startDate}T${startTime}/${startDate}T${endTime}`;
+
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`;
+};
+
+// Data, hora e local que o Início mostra de um evento
+const describeEntry = ({ event, groupName }: DashboardEntry, today: string) => {
+  const date = displayDateOf(event, today);
+  const location = finalLocationOf(event) ?? event.locationOptions[0];
+  return {
+    date: date?.date ?? '',
+    startTime: date?.startTime ?? '',
+    endTime: date?.endTime ?? '',
+    location: location?.name ?? 'Local a definir',
+    calendar: {
+      title: event.title,
+      groupName,
+      date: date?.date ?? '',
+      startTime: date?.startTime ?? '',
+      endTime: date?.endTime ?? '',
+      location: location?.name ?? 'Local a definir',
+    },
+  };
+};
+
 export const Dashboard = () => {
   const { user } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
-  const [upcomingEvents, setUpcomingEvents] = useState<
-    {
-      event: Event;
-      groupName: string;
-      groupId: string;
-      displayDate: string;
-      displayTime: string;
-      displayEndTime: string;
-      displayLocation: string;
-      isDateConfirmed: boolean;
-    }[]
-  >([]);
+  const [entries, setEntries] = useState<DashboardEntry[]>([]);
+  // Resposta da pessoa à presença; null = ainda não respondeu (só dos próximos eventos)
+  const [rsvp, setRsvp] = useState<Record<string, AttendanceStatus | null>>({});
   const [loadingEvents, setLoadingEvents] = useState(true);
 
   useEffect(() => {
-    const loadUpcomingEvents = async () => {
+    const load = async () => {
       if (!user) return;
       try {
-        const groups = await groupService.fetchUserGroups(user.uid);
-        setGroups(groups);
-        let allFutureEvents: {
-          event: Event;
-          groupName: string;
-          groupId: string;
-          displayDate: string;
-          displayTime: string;
-          displayEndTime: string;
-          displayLocation: string;
-          isDateConfirmed: boolean;
-        }[] = [];
-
-        const now = new Date();
-        now.setHours(0, 0, 0, 0); // Considerar eventos a partir de hoje
-
-        for (const group of groups) {
-          const events = await eventService.fetchGroupEvents(group.id);
-          const futureEvents = events
-            .filter((e: Event) => {
-              const dateStr = e.finalDateId
-                ? e.dateOptions.find((d) => d.id === e.finalDateId)?.date
-                : e.dateOptions[0]?.date;
-
-              if (!dateStr) return false;
-
-              // 'T00:00:00' força o fuso local; sem isso a data é lida em UTC e eventos de hoje somem
-              const eventDate = new Date(dateStr + 'T00:00:00');
-              return eventDate >= now;
-            })
-            .map((e: Event) => {
-              const dateObj = e.finalDateId
-                ? e.dateOptions.find((d) => d.id === e.finalDateId)
-                : e.dateOptions[0];
-              const locObj = e.finalLocationId
-                ? e.locationOptions.find((l) => l.id === e.finalLocationId)
-                : e.locationOptions[0];
-
-              return {
-                event: e,
-                groupName: group.name,
-                groupId: group.id,
-                displayDate: dateObj?.date || '',
-                displayTime: dateObj?.startTime || '',
-                displayEndTime: dateObj?.endTime || '',
-                displayLocation: locObj?.name || 'Local a definir',
-                isDateConfirmed: e.status === 'VOTING_GAMES' || e.status === 'CONFIRMED',
-              };
-            });
-
-          allFutureEvents = [...allFutureEvents, ...futureEvents];
-        }
-
-        // Ordenar do mais próximo pro mais distante
-        allFutureEvents.sort(
-          (a, b) => new Date(a.displayDate).getTime() - new Date(b.displayDate).getTime(),
+        const userGroups = await groupService.fetchUserGroups(user.uid);
+        setGroups(userGroups);
+        const perGroup = await Promise.all(
+          userGroups.map(async (group) =>
+            (await eventService.fetchGroupEvents(group.id)).map((event) => ({
+              event,
+              groupId: group.id,
+              groupName: group.name,
+            })),
+          ),
         );
+        const loaded = perGroup.flat();
+        setEntries(loaded);
+        setLoadingEvents(false);
 
-        setUpcomingEvents(allFutureEvents);
+        // A presença chega depois e sem pressa: uma falha só deixa de cobrar a resposta
+        const token = await user.getIdToken();
+        const toCheck = upcomingEntries(loaded, todayLocal())
+          .filter((e) => finalDateOf(e.event) && e.event.id)
+          .slice(0, MAX_RSVP_CHECKS);
+        const answers = await Promise.all(
+          toCheck.map(async ({ event }) => {
+            try {
+              const list = await eventService.getAttendance(event.id!, token);
+              return [event.id!, list.find((a) => a.userId === user.uid)?.status ?? null] as const;
+            } catch {
+              return null;
+            }
+          }),
+        );
+        setRsvp(Object.fromEntries(answers.filter((a) => a !== null)));
       } catch (err) {
         console.error('Erro ao carregar eventos globais:', err);
       } finally {
@@ -97,33 +133,18 @@ export const Dashboard = () => {
       }
     };
 
-    loadUpcomingEvents();
+    load();
   }, [user]);
 
-  const generateGoogleCalendarUrl = (item: any) => {
-    const text = encodeURIComponent(`Jogatina: ${item.event.title} (${item.groupName})`);
-    const details = encodeURIComponent(`Evento do grupo ${item.groupName}.`);
-    const location = encodeURIComponent(item.displayLocation);
+  const now = new Date();
+  const today = todayLocal(now);
+  const upcoming = upcomingEntries(entries, today);
+  const next = nextEntry(entries, today);
+  const actions = user ? pendingActions(entries, user.uid, today, rsvp) : [];
 
-    const startDate = item.displayDate.replace(/-/g, '');
-    const startTime = item.displayTime.replace(/:/g, '') + '00';
-    let endTime = '';
-
-    if (item.displayEndTime) {
-      endTime = item.displayEndTime.replace(/:/g, '') + '00';
-    } else {
-      const h = parseInt(item.displayTime.split(':')[0]);
-      const m = item.displayTime.split(':')[1];
-      const endH = Math.min(23, h + 4)
-        .toString()
-        .padStart(2, '0');
-      endTime = endH + m + '00';
-    }
-
-    const dates = `${startDate}T${startTime}/${startDate}T${endTime}`;
-
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&location=${location}`;
-  };
+  const nextInfo = next && describeEntry(next, today);
+  const countdown = nextInfo && describeCountdown(nextInfo.date, nextInfo.startTime, now);
+  const nextRsvp = next?.event.id ? rsvp[next.event.id] : undefined;
 
   return (
     <div className="dashboard">
@@ -134,46 +155,115 @@ export const Dashboard = () => {
         </div>
       </header>
 
-      <div className="dashboard-columns">
-        <section className="card">
-          <h2 className="dashboard-section-title">Próximos eventos</h2>
-
-          {loadingEvents ? (
-            <p className="empty-state">Buscando eventos...</p>
-          ) : upcomingEvents.length === 0 ? (
-            <p className="empty-state">Nenhum evento agendado para o futuro.</p>
-          ) : (
-            <ul className="dashboard-events">
-              {upcomingEvents.map((item) => (
-                <li key={item.event.id} className="dashboard-event">
-                  <Link to={`/event/${item.groupId}/${item.event.id}`}>
-                    <div className="dashboard-event-date">
-                      <strong>{item.displayDate.slice(8, 10)}</strong>
-                      <span>{monthLabel(item.displayDate)}</span>
-                    </div>
-                    <div className="dashboard-event-info">
-                      <h3>{item.event.title}</h3>
-                      <p className="muted">
-                        {item.groupName} · {item.displayTime} · {item.displayLocation}
-                      </p>
-                      <span className="chip">{EVENT_STATUS_LABEL[item.event.status]}</span>
-                    </div>
-                  </Link>
-                  {item.isDateConfirmed && (
-                    <a
-                      href={generateGoogleCalendarUrl(item)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-secondary btn-sm"
-                    >
-                      + Agenda
-                    </a>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+      {next && nextInfo && countdown && (
+        <section
+          className={`card dashboard-hero dashboard-hero-${countdown.urgency}`}
+          aria-label="Próxima jogatina"
+        >
+          <p className="dashboard-hero-kicker">Próxima jogatina</p>
+          <p className="dashboard-hero-countdown">{countdown.label}</p>
+          <h2>
+            <Link to={`/event/${next.groupId}/${next.event.id}`}>{next.event.title}</Link>
+          </h2>
+          <p className="muted">
+            {next.groupName} · {nextInfo.date.split('-').reverse().join('/')} · {nextInfo.location}
+          </p>
+          <div className="dashboard-hero-chips">
+            <span className="chip">{EVENT_STATUS_LABEL[next.event.status]}</span>
+            {nextRsvp !== undefined && (
+              <span className={`chip${nextRsvp === null ? ' chip-warning' : ''}`}>
+                {RSVP_CHIP[nextRsvp ?? 'none']}
+              </span>
+            )}
+          </div>
+          <div className="dashboard-hero-actions">
+            <Link to={`/event/${next.groupId}/${next.event.id}`} className="btn-primary btn-sm">
+              Abrir evento
+            </Link>
+            <a
+              href={googleCalendarUrl(nextInfo.calendar)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-secondary btn-sm"
+            >
+              + Agenda
+            </a>
+          </div>
         </section>
+      )}
+
+      <div className="dashboard-columns">
+        <div className="dashboard-main">
+          {!loadingEvents && (actions.length > 0 || upcoming.length > 0) && (
+            <section className="card dashboard-actions">
+              <h2 className="dashboard-section-title">
+                Precisa de você{' '}
+                {actions.length > 0 && <span className="chip">{actions.length}</span>}
+              </h2>
+              {actions.length === 0 ? (
+                <p className="dashboard-allclear">✓ Tudo em dia por aqui.</p>
+              ) : (
+                <ul className="dashboard-action-list">
+                  {actions.map((action) => (
+                    <li key={action.key}>
+                      <Link to={`/event/${action.groupId}/${action.eventId}`}>
+                        <span>
+                          <strong>{action.title}</strong>
+                          <small className="muted">{action.groupName}</small>
+                        </span>
+                        <span className="dashboard-action-label">{action.label} &rarr;</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          <section className="card">
+            <h2 className="dashboard-section-title">Próximos eventos</h2>
+
+            {loadingEvents ? (
+              <p className="empty-state">Buscando eventos...</p>
+            ) : upcoming.length === 0 ? (
+              <p className="empty-state">Nenhum evento agendado para o futuro.</p>
+            ) : (
+              <ul className="dashboard-events">
+                {upcoming.map((entry) => {
+                  const info = describeEntry(entry, today);
+                  const { event } = entry;
+                  return (
+                    <li key={event.id} className="dashboard-event">
+                      <Link to={`/event/${entry.groupId}/${event.id}`}>
+                        <div className="dashboard-event-date">
+                          <strong>{info.date.slice(8, 10)}</strong>
+                          <span>{monthLabel(info.date)}</span>
+                        </div>
+                        <div className="dashboard-event-info">
+                          <h3>{event.title}</h3>
+                          <p className="muted">
+                            {entry.groupName} · {info.startTime} · {info.location}
+                          </p>
+                          <span className="chip">{EVENT_STATUS_LABEL[event.status]}</span>
+                        </div>
+                      </Link>
+                      {finalDateOf(event) && (
+                        <a
+                          href={googleCalendarUrl(info.calendar)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-secondary btn-sm"
+                        >
+                          + Agenda
+                        </a>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
 
         <section className="card">
           <div className="dashboard-section-title">

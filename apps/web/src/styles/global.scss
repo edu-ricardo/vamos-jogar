@@ -247,6 +247,12 @@ input[type='radio'] {
   white-space: nowrap;
 }
 
+// Chip de atenção: algo que ainda depende da pessoa
+.chip-warning {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+}
+
 // Cabeçalho de página: título à esquerda, ações à direita
 .page-header {
   display: flex;
