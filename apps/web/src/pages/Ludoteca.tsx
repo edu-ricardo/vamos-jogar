@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ludotecaService, getGameSource, type Game } from '../services/ludotecaService';
-import { filterCollection } from '../services/ludotecaFilters';
+import { isManualGame, newManualGameId } from '../services/manualGame';
+import { filterCollection, sortCollection, type GameSort } from '../services/ludotecaFilters';
 import { Modal } from '../components/Modal';
 import { GameFilters, emptyGameFilters, toCollectionFilters } from '../components/GameFilters';
 import toast from 'react-hot-toast';
@@ -38,8 +39,13 @@ export const Ludoteca = () => {
   const [expSearchResults, setExpSearchResults] = useState<Game[]>([]);
   const [expSearchLoading, setExpSearchLoading] = useState(false);
 
-  // Filtros da coleção
+  // Filtros e ordenação da coleção
   const [filters, setFilters] = useState(emptyGameFilters);
+  const [sort, setSort] = useState<GameSort>('added');
+
+  // Cadastro manual (jogo que a Ludopedia e o BGG não têm)
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualName, setManualName] = useState('');
 
   const loadCollection = async () => {
     if (!user) return;
@@ -106,6 +112,40 @@ export const Ludoteca = () => {
       await ludotecaService.addGameToCollection(user.uid, gameToSave);
       toast.success('Adicionado à sua Ludoteca!');
       setSelectedGame(null);
+      loadCollection();
+    } catch (err) {
+      toast.error('Erro ao adicionar');
+    }
+  };
+
+  const openManualModal = () => {
+    setManualName('');
+    setObservation('');
+    setPlaytime('');
+    setMinPlayers('');
+    setMaxPlayers('');
+    setManualOpen(true);
+  };
+
+  const confirmManualGame = async () => {
+    if (!user) return;
+    if (!manualName.trim()) {
+      toast.error('Informe o nome do jogo.');
+      return;
+    }
+    try {
+      await ludotecaService.addGameToCollection(user.uid, {
+        id: newManualGameId(),
+        sourceId: '',
+        name: manualName.trim(),
+        image: '',
+        playtime,
+        minPlayers: minPlayers ? Number(minPlayers) : undefined,
+        maxPlayers: maxPlayers ? Number(maxPlayers) : undefined,
+        observation,
+      });
+      toast.success('Adicionado à sua Ludoteca!');
+      setManualOpen(false);
       loadCollection();
     } catch (err) {
       toast.error('Erro ao adicionar');
@@ -208,7 +248,10 @@ export const Ludoteca = () => {
     }
   };
 
-  const filteredCollection = filterCollection(myCollection, toCollectionFilters(filters));
+  const filteredCollection = sortCollection(
+    filterCollection(myCollection, toCollectionFilters(filters)),
+    sort,
+  );
 
   const gameFields = (
     <div className="ludoteca-fields">
@@ -289,6 +332,10 @@ export const Ludoteca = () => {
           </form>
           {error && <p className="ludoteca-error">{error}</p>}
 
+          <button type="button" className="btn-link ludoteca-manual" onClick={openManualModal}>
+            Não achou? Cadastrar jogo manualmente
+          </button>
+
           {searchResults.length > 0 && (
             <ul className="ludoteca-results">
               {searchResults.map((game) => (
@@ -313,7 +360,13 @@ export const Ludoteca = () => {
                 : `${filteredCollection.length} de ${myCollection.length}`}
               )
             </h2>
-            <GameFilters values={filters} onChange={setFilters} withText />
+            <GameFilters
+              values={filters}
+              onChange={setFilters}
+              withText
+              sort={sort}
+              onSortChange={setSort}
+            />
           </div>
 
           {myCollection.length === 0 ? (
@@ -399,6 +452,38 @@ export const Ludoteca = () => {
         </Modal>
       )}
 
+      {manualOpen && (
+        <Modal
+          title="Cadastrar jogo manualmente"
+          onClose={() => setManualOpen(false)}
+          footer={
+            <>
+              <button onClick={() => setManualOpen(false)} className="btn-secondary">
+                Cancelar
+              </button>
+              <button onClick={confirmManualGame} className="btn-primary">
+                Adicionar à ludoteca
+              </button>
+            </>
+          }
+        >
+          <div className="ludoteca-fields">
+            <div className="field">
+              <label htmlFor="manual-name">Nome do jogo</label>
+              <input
+                id="manual-name"
+                type="text"
+                value={manualName}
+                onChange={(e) => setManualName(e.target.value)}
+                placeholder="Ex: Meu jogo de cartas"
+                autoFocus
+              />
+            </div>
+            {gameFields}
+          </div>
+        </Modal>
+      )}
+
       {editingGame && (
         <Modal
           title={`Editando: ${editingGame.name}`}
@@ -416,58 +501,75 @@ export const Ludoteca = () => {
           }
         >
           <div className="ludoteca-edit">
-            {gameFields}
+            <div className="ludoteca-fields">
+              {isManualGame(editingGame.id) && (
+                <div className="field">
+                  <label htmlFor="edit-name">Nome do jogo</label>
+                  <input
+                    id="edit-name"
+                    type="text"
+                    value={editingGame.name}
+                    onChange={(e) => setEditingGame({ ...editingGame, name: e.target.value })}
+                  />
+                </div>
+              )}
+              {gameFields}
+            </div>
 
-            <div className="ludoteca-edit-expansions">
-              <h3>Expansões adicionadas</h3>
-              {!editingGame.expansions || editingGame.expansions.length === 0 ? (
-                <p className="muted">Nenhuma expansão cadastrada.</p>
-              ) : (
-                <ul>
-                  {editingGame.expansions.map((exp) => (
+            {!isManualGame(editingGame.id) && (
+              <div className="ludoteca-edit-expansions">
+                <h3>Expansões adicionadas</h3>
+                {!editingGame.expansions || editingGame.expansions.length === 0 ? (
+                  <p className="muted">Nenhuma expansão cadastrada.</p>
+                ) : (
+                  <ul>
+                    {editingGame.expansions.map((exp) => (
+                      <li key={exp.id}>
+                        <span>{exp.name}</span>
+                        <button
+                          onClick={() => removeExpansion(exp.id)}
+                          className="btn-link ludoteca-remove"
+                        >
+                          Remover
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          {!isManualGame(editingGame.id) && (
+            <div className="ludoteca-exp-search">
+              <h3>Buscar e adicionar expansão</h3>
+              <form onSubmit={handleExpSearch} className="ludoteca-search-form">
+                <input
+                  type="text"
+                  placeholder="Nome da expansão (deixe em branco para ver todas)..."
+                  value={expSearchQuery}
+                  onChange={(e) => setExpSearchQuery(e.target.value)}
+                />
+                <button type="submit" className="btn-primary" disabled={expSearchLoading}>
+                  {expSearchLoading ? 'Buscando...' : 'Buscar'}
+                </button>
+              </form>
+
+              {expSearchResults.length > 0 && (
+                <ul className="ludoteca-results">
+                  {expSearchResults.map((exp) => (
                     <li key={exp.id}>
+                      <GameThumb game={exp} />
                       <span>{exp.name}</span>
-                      <button
-                        onClick={() => removeExpansion(exp.id)}
-                        className="btn-link ludoteca-remove"
-                      >
-                        Remover
+                      <button onClick={() => addExpansion(exp)} className="btn-secondary btn-sm">
+                        + Adicionar
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-          </div>
-
-          <div className="ludoteca-exp-search">
-            <h3>Buscar e adicionar expansão</h3>
-            <form onSubmit={handleExpSearch} className="ludoteca-search-form">
-              <input
-                type="text"
-                placeholder="Nome da expansão (deixe em branco para ver todas)..."
-                value={expSearchQuery}
-                onChange={(e) => setExpSearchQuery(e.target.value)}
-              />
-              <button type="submit" className="btn-primary" disabled={expSearchLoading}>
-                {expSearchLoading ? 'Buscando...' : 'Buscar'}
-              </button>
-            </form>
-
-            {expSearchResults.length > 0 && (
-              <ul className="ludoteca-results">
-                {expSearchResults.map((exp) => (
-                  <li key={exp.id}>
-                    <GameThumb game={exp} />
-                    <span>{exp.name}</span>
-                    <button onClick={() => addExpansion(exp)} className="btn-secondary btn-sm">
-                      + Adicionar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          )}
         </Modal>
       )}
     </div>

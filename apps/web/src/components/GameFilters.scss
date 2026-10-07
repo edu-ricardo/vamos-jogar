@@ -6,7 +6,8 @@
   gap: 8px;
   width: 100%;
 
-  input {
+  input,
+  .game-filters-sort {
     grid-column: 1 / -1;
   }
 

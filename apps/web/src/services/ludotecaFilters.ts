@@ -34,3 +34,41 @@ export const filterCollection = (games: Game[], filters: CollectionFilters): Gam
     return true;
   });
 };
+
+export type GameSort = 'added' | 'recent' | 'name' | 'playtime' | 'players';
+
+export const GAME_SORT_LABELS: Record<GameSort, string> = {
+  added: 'Ordem de adição',
+  recent: 'Mais recentes',
+  name: 'Nome (A–Z)',
+  playtime: 'Mais rápidos primeiro',
+  players: 'Mais jogadores primeiro',
+};
+
+const byName = (a: Game, b: Game) => a.name.localeCompare(b.name, 'pt-BR', { sensitivity: 'base' });
+
+// Jogos sem o dado (duração, jogadores) vão para o fim; empates ficam em ordem alfabética
+const byNumber =
+  (value: (game: Game) => number | undefined, direction: 1 | -1) => (a: Game, b: Game) => {
+    const x = value(a);
+    const y = value(b);
+    if (x === undefined && y === undefined) return byName(a, b);
+    if (x === undefined) return 1;
+    if (y === undefined) return -1;
+    return x === y ? byName(a, b) : (x - y) * direction;
+  };
+
+const maxPlayersOf = (game: Game): number | undefined => {
+  const max = Number(game.maxPlayers || game.minPlayers);
+  return max > 0 ? max : undefined;
+};
+
+// A lista chega na ordem de adição (a mais antiga primeiro)
+export const sortCollection = (games: Game[], sort: GameSort): Game[] => {
+  const copy = [...games];
+  if (sort === 'recent') return copy.reverse();
+  if (sort === 'name') return copy.sort(byName);
+  if (sort === 'playtime') return copy.sort(byNumber((g) => parsePlaytime(g.playtime), 1));
+  if (sort === 'players') return copy.sort(byNumber(maxPlayersOf, -1));
+  return copy;
+};

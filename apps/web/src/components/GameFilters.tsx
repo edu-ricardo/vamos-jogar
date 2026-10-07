@@ -1,4 +1,8 @@
-import type { CollectionFilters } from '../services/ludotecaFilters';
+import {
+  GAME_SORT_LABELS,
+  type CollectionFilters,
+  type GameSort,
+} from '../services/ludotecaFilters';
 import './GameFilters.scss';
 
 // Valores como saem dos campos (texto); toCollectionFilters converte para o filtro de verdade
@@ -21,10 +25,19 @@ interface GameFiltersProps {
   onChange: (values: GameFilterValues) => void;
   // A busca por nome só faz sentido em listas longas (a ludoteca inteira)
   withText?: boolean;
+  // Ordenação (só onde a lista é a coleção inteira)
+  sort?: GameSort;
+  onSortChange?: (sort: GameSort) => void;
 }
 
 // Filtros por nome, número de jogadores e duração, iguais na ludoteca e na sugestão de jogos
-export const GameFilters = ({ values, onChange, withText = false }: GameFiltersProps) => (
+export const GameFilters = ({
+  values,
+  onChange,
+  withText = false,
+  sort,
+  onSortChange,
+}: GameFiltersProps) => (
   <div className={`game-filters${withText ? ' with-text' : ''}`}>
     {withText && (
       <input
@@ -58,5 +71,19 @@ export const GameFilters = ({ values, onChange, withText = false }: GameFiltersP
       <option value="90">Até 1h30</option>
       <option value="120">Até 2 horas</option>
     </select>
+    {sort && onSortChange && (
+      <select
+        className="game-filters-sort"
+        value={sort}
+        onChange={(e) => onSortChange(e.target.value as GameSort)}
+        aria-label="Ordenar"
+      >
+        {(Object.keys(GAME_SORT_LABELS) as GameSort[]).map((key) => (
+          <option key={key} value={key}>
+            {GAME_SORT_LABELS[key]}
+          </option>
+        ))}
+      </select>
+    )}
   </div>
 );

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { filterCollection, parsePlaytime } from './ludotecaFilters';
+import { filterCollection, parsePlaytime, sortCollection } from './ludotecaFilters';
 import type { Game } from './ludotecaService';
 
 const game = (name: string, extra: Partial<Game> = {}): Game => ({
@@ -48,5 +48,52 @@ describe('filterCollection', () => {
 
   it('combina os filtros', () => {
     expect(filterCollection(all, { players: 3, maxPlaytime: 60 })).toEqual([catan]);
+  });
+});
+
+describe('sortCollection', () => {
+  const zeta = game('Zeta', { playtime: '30', minPlayers: 2, maxPlayers: 4 });
+  const alfa = game('alfa', { playtime: '90-120', minPlayers: 1, maxPlayers: 5 });
+  const beta = game('Beta', { playtime: '30', minPlayers: 2, maxPlayers: 2 });
+  const sem = game('Sem dados');
+  const all = [zeta, alfa, beta, sem];
+
+  it('ordem de adição mantém a lista como veio, sem alterar a original', () => {
+    const sorted = sortCollection(all, 'added');
+    expect(sorted).toEqual(all);
+    expect(sorted).not.toBe(all);
+  });
+
+  it('mais recentes inverte a ordem de adição', () => {
+    expect(sortCollection(all, 'recent').map((g) => g.name)).toEqual([
+      'Sem dados',
+      'Beta',
+      'alfa',
+      'Zeta',
+    ]);
+  });
+
+  it('nome: alfabética sem diferenciar maiúsculas e acentos', () => {
+    expect(
+      sortCollection([game('Ótimo'), game('zebra'), game('Alfa')], 'name').map((g) => g.name),
+    ).toEqual(['Alfa', 'Ótimo', 'zebra']);
+  });
+
+  it('mais rápidos primeiro: faixa vale o maior tempo, empate por nome e sem duração por último', () => {
+    expect(sortCollection(all, 'playtime').map((g) => g.name)).toEqual([
+      'Beta',
+      'Zeta',
+      'alfa',
+      'Sem dados',
+    ]);
+  });
+
+  it('mais jogadores primeiro: pelo máximo, empate por nome e sem dado por último', () => {
+    expect(sortCollection(all, 'players').map((g) => g.name)).toEqual([
+      'alfa',
+      'Zeta',
+      'Beta',
+      'Sem dados',
+    ]);
   });
 });
