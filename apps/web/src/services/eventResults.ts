@@ -42,3 +42,12 @@ export const countChoices = (votes: Record<string, string> = {}): Record<string,
     },
     {} as Record<string, number>,
   );
+
+// Datas aceitam várias marcas por pessoa (como os jogos); a contagem é a mesma
+export const countDateVotes = countGameVotes;
+
+// Opções que lideram a votação: as de mais votos (todas, se empatarem). Sem nenhum voto, ninguém lidera.
+export const findLeaders = (optionIds: string[], counts: Record<string, number>): string[] => {
+  const top = Math.max(0, ...optionIds.map((id) => counts[id] || 0));
+  return top > 0 ? optionIds.filter((id) => (counts[id] || 0) === top) : [];
+};

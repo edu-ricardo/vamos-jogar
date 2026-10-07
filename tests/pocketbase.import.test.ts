@@ -80,7 +80,8 @@ describeIfPocketBase('Migração do backup do Firebase', () => {
       status: 'CONFIRMED',
       creatorId: bia,
       finalGameIds: ['ludo-1'],
-      votesDate: { [ana]: 'd1', [bia]: 'd1' },
+      // No Firebase era uma data por pessoa; o app agora lê como lista de datas
+      votesDate: { [ana]: ['d1'], [bia]: ['d1'] },
       votesLocation: { [ana]: 'l1', [bia]: 'l1' },
       votesGames: { [ana]: ['ludo-1'], [caio]: ['ludo-1', 'bgg-7'] },
     });

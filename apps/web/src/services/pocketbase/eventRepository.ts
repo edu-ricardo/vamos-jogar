@@ -4,11 +4,17 @@ import type { Event, EventGameOption, EventRepository, FavoriteLocation } from '
 
 // No PocketBase votos e sugestões são coleções próprias; aqui elas voltam ao formato Event do app
 const toEvent = (record: RecordModel, votes: RecordModel[], games: RecordModel[]): Event => {
-  const votesDate: Record<string, string> = {};
+  const votesDate: Record<string, string[]> = {};
   const votesLocation: Record<string, string> = {};
   const votesGames: Record<string, string[]> = {};
   for (const vote of votes) {
-    if (vote.dateOptionId) votesDate[vote.user] = vote.dateOptionId;
+    // Voto feito pela versão anterior só tem dateOptionId (uma data)
+    const dates: string[] = vote.dateOptionIds?.length
+      ? vote.dateOptionIds
+      : vote.dateOptionId
+        ? [vote.dateOptionId]
+        : [];
+    if (dates.length > 0) votesDate[vote.user] = dates;
     if (vote.locationOptionId) votesLocation[vote.user] = vote.locationOptionId;
     if (Array.isArray(vote.gameIds)) votesGames[vote.user] = vote.gameIds;
   }
@@ -93,8 +99,13 @@ export const createPocketBaseEventRepository = (pb: PocketBase): EventRepository
       return toEvent(event, votes, games);
     },
 
-    voteDateLocation: (_groupId, eventId, userId, dateOptionId, locationOptionId) =>
-      upsertVote(eventId, userId, { dateOptionId, locationOptionId }),
+    // dateOptionId (a primeira data) segue gravado para a versão anterior do app conseguir ler
+    voteDateLocation: (_groupId, eventId, userId, dateOptionIds, locationOptionId) =>
+      upsertVote(eventId, userId, {
+        dateOptionIds,
+        dateOptionId: dateOptionIds[0] ?? '',
+        locationOptionId,
+      }),
 
     voteGames: (_groupId, eventId, userId, gameIds) => upsertVote(eventId, userId, { gameIds }),
 

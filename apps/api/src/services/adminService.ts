@@ -4,7 +4,7 @@ import { accountService } from './accountService';
 import { generateTemporaryPassword, parseAdminEmails } from './adminRules';
 import { reminderService } from './notifications';
 import type { AdminReminderResult } from './reminderService';
-import { describeReminderOutcome, getPendingVoterIds } from './reminderRules';
+import { dateVotesByUser, describeReminderOutcome, getPendingVoterIds } from './reminderRules';
 import type { AuthenticatedUser } from './userTokenService';
 
 // Recusa de uma ação do painel, com a mensagem mostrada a quem tentou
@@ -247,17 +247,16 @@ export const createAdminService = (
       ]);
       return events.map((event) => {
         const members = memberships.filter((m) => m.group === event.group);
+        const eventVotes = votes.filter((v) => v.event === event.id);
         const votesFrom = (field: string) =>
           Object.fromEntries(
-            votes
-              .filter((v) => v.event === event.id && v.user && v[field])
-              .map((v) => [v.user, v[field]]),
+            eventVotes.filter((v) => v.user && v[field]).map((v) => [v.user, v[field]]),
           );
         const pendingIds = getPendingVoterIds(
           members.map((m) => m.user),
           {
             status: event.status,
-            votesDate: votesFrom('dateOptionId'),
+            votesDate: dateVotesByUser(eventVotes),
             votesGames: votesFrom('gameIds'),
           },
         );

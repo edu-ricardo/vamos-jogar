@@ -56,6 +56,7 @@ try {
       'tests/pocketbase.push.test.ts',
       'tests/pocketbase.admin.test.ts',
       'tests/pocketbase.notifications.test.ts',
+      'tests/pocketbase.dateVotes.test.ts',
       '--no-file-parallelism',
     ],
     {

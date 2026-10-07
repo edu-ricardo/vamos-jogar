@@ -15,7 +15,9 @@ import { groupService, type GroupMember } from '../services/groupService';
 import {
   EVENT_STATUS_LABEL,
   countChoices,
+  countDateVotes,
   countGameVotes,
+  findLeaders,
   rankGameOptions,
 } from '../services/eventResults';
 import { Modal } from '../components/Modal';
@@ -69,7 +71,8 @@ export const EventDetails = () => {
   const [loading, setLoading] = useState(true);
 
   // States para votação de Data/Local
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  // Datas em que a pessoa pode (várias); o local é uma escolha só
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -78,6 +81,8 @@ export const EventDetails = () => {
 
   // Confirmações de ações sem volta
   const [confirmAction, setConfirmAction] = useState<'delete' | 'advance' | null>(null);
+  // Data e local que o organizador escolhe como vencedores ao fechar a etapa
+  const [winner, setWinner] = useState({ date: '', location: '' });
 
   // States para a Fase 5 (Jogos)
   const [showSuggestGamesModal, setShowSuggestGamesModal] = useState(false);
@@ -116,8 +121,14 @@ export const EventDetails = () => {
       }
 
       if (user) {
-        if (fetched.votesDate && fetched.votesDate[user.uid])
-          setSelectedDate(fetched.votesDate[user.uid]);
+        if (fetched.votesDate && fetched.votesDate[user.uid]) {
+          // Descarta datas que o organizador removeu depois do voto
+          setSelectedDates(
+            fetched.votesDate[user.uid].filter((id) =>
+              fetched.dateOptions.some((d) => d.id === id),
+            ),
+          );
+        }
         if (fetched.votesLocation && fetched.votesLocation[user.uid])
           setSelectedLocation(fetched.votesLocation[user.uid]);
         if (fetched.votesGames && fetched.votesGames[user.uid])
@@ -179,8 +190,8 @@ export const EventDetails = () => {
 
   const handleVoteDate = async () => {
     if (!groupId || !eventId || !user) return;
-    if (!selectedDate || !selectedLocation) {
-      toast.error('Escolha uma data e um local para votar.');
+    if (selectedDates.length === 0 || !selectedLocation) {
+      toast.error('Marque ao menos uma data e escolha um local para votar.');
       return;
     }
     setSubmitting(true);
@@ -189,7 +200,7 @@ export const EventDetails = () => {
         groupId,
         eventId,
         user.uid,
-        selectedDate,
+        selectedDates,
         selectedLocation,
       );
       toast.success('Seu voto foi registrado!');
@@ -201,11 +212,22 @@ export const EventDetails = () => {
     }
   };
 
+  // Abre a escolha dos vencedores já com a opção líder marcada; em empate (ou sem votos), o
+  // organizador decide
   const openAdvanceToGames = () => {
-    if (!selectedDate || !selectedLocation) {
-      toast.error('Você precisa selecionar uma Data e um Local para definir como vencedores.');
-      return;
-    }
+    if (!event) return;
+    const [dateLeader, ...otherDateLeaders] = findLeaders(
+      event.dateOptions.map((d) => d.id),
+      countDateVotes(event.votesDate),
+    );
+    const [locationLeader, ...otherLocationLeaders] = findLeaders(
+      event.locationOptions.map((l) => l.id),
+      countChoices(event.votesLocation),
+    );
+    setWinner({
+      date: otherDateLeaders.length === 0 ? (dateLeader ?? '') : '',
+      location: otherLocationLeaders.length === 0 ? (locationLeader ?? '') : '',
+    });
     setConfirmAction('advance');
   };
 
@@ -236,7 +258,7 @@ export const EventDetails = () => {
   const handleAdvanceToGames = async () => {
     if (!groupId || !eventId) return;
     try {
-      await eventService.advanceToGamesVoting(groupId, eventId, selectedDate, selectedLocation);
+      await eventService.advanceToGamesVoting(groupId, eventId, winner.date, winner.location);
       announce('date_set');
       toast.success('Votação de Jogos iniciada!');
       setConfirmAction(null);
@@ -319,7 +341,7 @@ export const EventDetails = () => {
 
     // Datas
     report += `*🗓️ Datas:*\n`;
-    const dateVotes = countChoices(event.votesDate);
+    const dateVotes = countDateVotes(event.votesDate);
     const sortedDates = [...event.dateOptions].sort(
       (a, b) => (dateVotes[b.id] || 0) - (dateVotes[a.id] || 0),
     );
@@ -431,8 +453,21 @@ export const EventDetails = () => {
 
   const myAttendance = attendance.find((a) => a.userId === user?.uid)?.status ?? null;
 
-  const dateVotes = countChoices(event.votesDate);
+  const dateVotes = countDateVotes(event.votesDate);
   const locationVotes = countChoices(event.votesLocation);
+  const dateLeaders = findLeaders(
+    event.dateOptions.map((d) => d.id),
+    dateVotes,
+  );
+  const locationLeaders = findLeaders(
+    event.locationOptions.map((l) => l.id),
+    locationVotes,
+  );
+  // "Líder" quando só uma opção tem mais votos; "Empate" quando várias dividem o topo
+  const leaderChip = (leaders: string[], id: string) =>
+    leaders.includes(id) ? (
+      <span className="chip event-leader">{leaders.length > 1 ? 'Empate' : 'Líder'}</span>
+    ) : null;
   const gameVotes = countGameVotes(event.votesGames);
   // Quem já votou na etapa atual (no evento confirmado não há mais votação)
   const phaseVotes = event.status === 'VOTING_GAMES' ? event.votesGames || {} : event.votesDate;
@@ -485,25 +520,29 @@ export const EventDetails = () => {
             <section className="card">
               <h2>Votação de data e local</h2>
               <p className="muted event-hint">
-                Indique a sua preferência para organizarmos essa jogatina.
+                Marque todas as datas em que você pode e escolha um local.
               </p>
 
-              <h3 className="event-subtitle">Data e horário</h3>
+              <h3 className="event-subtitle">Datas e horários</h3>
               <div className="event-options">
                 {event.dateOptions.map((opt) => (
                   <label
                     key={opt.id}
-                    className={`event-option${selectedDate === opt.id ? ' selected' : ''}`}
+                    className={`event-option${selectedDates.includes(opt.id) ? ' selected' : ''}`}
                   >
                     <input
-                      type="radio"
-                      name="date"
+                      type="checkbox"
                       value={opt.id}
-                      checked={selectedDate === opt.id}
-                      onChange={() => setSelectedDate(opt.id)}
+                      checked={selectedDates.includes(opt.id)}
+                      onChange={(e) =>
+                        setSelectedDates(toggle(selectedDates, opt.id, e.target.checked))
+                      }
                     />
                     <div className="event-option-info">
-                      <strong>{formatDate(opt.date)}</strong>
+                      <strong>
+                        {formatDate(opt.date)}
+                        {leaderChip(dateLeaders, opt.id)}
+                      </strong>
                       <span className="muted">
                         {opt.startTime} {opt.endTime ? `às ${opt.endTime}` : '(horário de início)'}
                       </span>
@@ -528,7 +567,10 @@ export const EventDetails = () => {
                       onChange={() => setSelectedLocation(opt.id)}
                     />
                     <div className="event-option-info">
-                      <strong>{opt.name}</strong>
+                      <strong>
+                        {opt.name}
+                        {leaderChip(locationLeaders, opt.id)}
+                      </strong>
                       <a
                         href={mapsUrl(opt.address)}
                         target="_blank"
@@ -563,7 +605,8 @@ export const EventDetails = () => {
               {canManageEvent && (
                 <div className="event-close-step">
                   <p className="muted">
-                    Como organizador, escolha as opções campeãs (acima) e feche essa etapa:
+                    Como organizador, quando todos tiverem votado, escolha a data e o local
+                    vencedores e feche essa etapa:
                   </p>
                   <button onClick={openAdvanceToGames} className="btn-success btn-block">
                     Cravar vencedores e ir para jogos &rarr;
@@ -781,28 +824,83 @@ export const EventDetails = () => {
 
       {confirmAction === 'advance' && (
         <Modal
-          title="Encerrar votação de data e local?"
-          size="sm"
+          title="Escolher data e local vencedores"
           onClose={() => setConfirmAction(null)}
           footer={
             <>
               <button onClick={() => setConfirmAction(null)} className="btn-secondary">
                 Cancelar
               </button>
-              <button onClick={handleAdvanceToGames} className="btn-success">
+              <button
+                onClick={handleAdvanceToGames}
+                disabled={!winner.date || !winner.location}
+                className="btn-success"
+              >
                 Confirmar e ir para jogos
               </button>
             </>
           }
         >
-          <p className="muted">
-            A jogatina fica marcada para{' '}
-            <strong>
-              {formatDate(event.dateOptions.find((d) => d.id === selectedDate)?.date ?? '')}
-            </strong>{' '}
-            em <strong>{event.locationOptions.find((l) => l.id === selectedLocation)?.name}</strong>
-            , as opções que você selecionou. Depois disso ninguém mais vota em data e local.
+          <p className="muted event-hint">
+            A jogatina fica marcada com as opções escolhidas. Depois disso ninguém mais vota em data
+            e local.
           </p>
+
+          <h3 className="event-subtitle">Data e horário</h3>
+          {dateLeaders.length > 1 && (
+            <p className="muted event-hint">Empate nos votos: escolha uma das datas.</p>
+          )}
+          <div className="event-options">
+            {event.dateOptions.map((opt) => (
+              <label
+                key={opt.id}
+                className={`event-option${winner.date === opt.id ? ' selected' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="winner-date"
+                  checked={winner.date === opt.id}
+                  onChange={() => setWinner({ ...winner, date: opt.id })}
+                />
+                <div className="event-option-info">
+                  <strong>
+                    {formatDate(opt.date)}
+                    {leaderChip(dateLeaders, opt.id)}
+                  </strong>
+                  <span className="muted">{opt.startTime}</span>
+                </div>
+                <span className="muted">{dateVotes[opt.id] || 0} voto(s)</span>
+              </label>
+            ))}
+          </div>
+
+          <h3 className="event-subtitle">Local</h3>
+          {locationLeaders.length > 1 && (
+            <p className="muted event-hint">Empate nos votos: escolha um dos locais.</p>
+          )}
+          <div className="event-options">
+            {event.locationOptions.map((opt) => (
+              <label
+                key={opt.id}
+                className={`event-option${winner.location === opt.id ? ' selected' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="winner-location"
+                  checked={winner.location === opt.id}
+                  onChange={() => setWinner({ ...winner, location: opt.id })}
+                />
+                <div className="event-option-info">
+                  <strong>
+                    {opt.name}
+                    {leaderChip(locationLeaders, opt.id)}
+                  </strong>
+                  <span className="muted">{opt.address}</span>
+                </div>
+                <span className="muted">{locationVotes[opt.id] || 0} voto(s)</span>
+              </label>
+            ))}
+          </div>
         </Modal>
       )}
 

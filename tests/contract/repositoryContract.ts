@@ -84,8 +84,8 @@ export const defineRepositoryContract = (name: string, backend: ContractBackend)
           .eventsAs('bia')
           .createEvent(group.id, bia, 'Sexta', dates, locations);
 
-        await s.eventsAs('ana').voteDateLocation(group.id, eventId, ana, 'd1', 'l1');
-        await s.eventsAs('caio').voteDateLocation(group.id, eventId, caio, 'd2', 'l1');
+        await s.eventsAs('ana').voteDateLocation(group.id, eventId, ana, ['d1'], 'l1');
+        await s.eventsAs('caio').voteDateLocation(group.id, eventId, caio, ['d1', 'd2'], 'l1');
         await s.eventsAs('ana').advanceToGamesVoting(group.id, eventId, 'd1', 'l1');
 
         await s
@@ -108,7 +108,7 @@ export const defineRepositoryContract = (name: string, backend: ContractBackend)
           finalDateId: 'd1',
           finalLocationId: 'l1',
           finalGameIds: ['ludo-1'],
-          votesDate: { [ana]: 'd1', [caio]: 'd2' },
+          votesDate: { [ana]: ['d1'], [caio]: ['d1', 'd2'] },
           votesLocation: { [ana]: 'l1', [caio]: 'l1' },
           votesGames: { [ana]: ['ludo-1', 'bgg-2'] },
         });

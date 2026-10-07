@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { countChoices, countGameVotes, rankGameOptions } from './eventResults';
+import {
+  countChoices,
+  countDateVotes,
+  countGameVotes,
+  findLeaders,
+  rankGameOptions,
+} from './eventResults';
 
 const game = (id: string) => ({ id, name: id, thumb: '', suggesterId: 'ana' });
 
@@ -36,5 +42,37 @@ describe('countChoices', () => {
   it('conta quantas pessoas escolheram cada opção', () => {
     expect(countChoices({ ana: 'd1', bia: 'd1', caio: 'd2' })).toEqual({ d1: 2, d2: 1 });
     expect(countChoices(undefined)).toEqual({});
+  });
+});
+
+describe('countDateVotes', () => {
+  it('soma cada data marcada, mesmo quando a pessoa marca várias', () => {
+    expect(countDateVotes({ ana: ['d1', 'd2'], bia: ['d1'], caio: ['d3'] })).toEqual({
+      d1: 2,
+      d2: 1,
+      d3: 1,
+    });
+    expect(countDateVotes(undefined)).toEqual({});
+  });
+});
+
+describe('findLeaders', () => {
+  const ids = ['d1', 'd2', 'd3'];
+
+  it('devolve a opção mais votada', () => {
+    expect(findLeaders(ids, { d1: 1, d2: 3, d3: 2 })).toEqual(['d2']);
+  });
+
+  it('em empate devolve todas as empatadas, na ordem das opções', () => {
+    expect(findLeaders(ids, { d3: 2, d1: 2, d2: 1 })).toEqual(['d1', 'd3']);
+  });
+
+  it('sem nenhum voto ninguém lidera (nem todas "empatadas em zero")', () => {
+    expect(findLeaders(ids, {})).toEqual([]);
+    expect(findLeaders([], { d1: 5 })).toEqual([]);
+  });
+
+  it('ignora votos em opções que não existem mais', () => {
+    expect(findLeaders(['d1', 'd2'], { d1: 1, removida: 9 })).toEqual(['d1']);
   });
 });

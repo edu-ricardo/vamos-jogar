@@ -77,14 +77,14 @@ export const createFirebaseEventRepository = (db: Firestore): EventRepository =>
     groupId: string,
     eventId: string,
     userId: string,
-    dateOptionId: string,
+    dateOptionIds: string[],
     locationOptionId: string,
   ): Promise<void> => {
     try {
       // Atualiza só o voto deste usuário para não sobrescrever votos simultâneos
       const docRef = doc(db, `groups/${groupId}/events`, eventId);
       await updateDoc(docRef, {
-        [`votesDate.${userId}`]: dateOptionId,
+        [`votesDate.${userId}`]: dateOptionIds,
         [`votesLocation.${userId}`]: locationOptionId,
       });
     } catch (err) {

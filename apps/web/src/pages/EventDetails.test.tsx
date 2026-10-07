@@ -60,7 +60,7 @@ const dateEvent = (overrides = {}) => ({
     { id: 'l1', name: 'Casa do Edu', address: 'Rua das Flores, 100' },
     { id: 'l2', name: 'Ludoteca Café', address: 'Av. Paulista, 1000' },
   ],
-  votesDate: { 'u-bia': 'd1', 'u-caio': 'd1' },
+  votesDate: { 'u-bia': ['d1'], 'u-caio': ['d1'] },
   votesLocation: { 'u-bia': 'l2' },
   createdAt: '',
   ...overrides,
@@ -117,53 +117,170 @@ describe('Evento — votação de data e local', () => {
     expect(screen.getAllByTitle('0 voto(s)')).toHaveLength(2);
   });
 
-  it('vota na data e no local escolhidos', async () => {
+  it('vota em várias datas e em um local', async () => {
     const user = userEvent.setup();
     await open(dateEvent());
 
+    await user.click(screen.getByLabelText(/10\/10\/2026/));
     await user.click(screen.getByLabelText(/11\/10\/2026/));
     await user.click(screen.getByLabelText(/Casa do Edu/));
     await user.click(screen.getByRole('button', { name: 'Confirmar voto' }));
 
-    expect(eventService.voteDateLocation).toHaveBeenCalledWith('g1', 'e1', 'u-edu', 'd2', 'l1');
+    expect(eventService.voteDateLocation).toHaveBeenCalledWith(
+      'g1',
+      'e1',
+      'u-edu',
+      ['d1', 'd2'],
+      'l1',
+    );
     expect(toast.success).toHaveBeenCalledWith('Seu voto foi registrado!');
   });
 
-  it('exige data e local para votar', async () => {
+  it('desmarcar uma data a tira do voto', async () => {
+    const user = userEvent.setup();
+    await open(dateEvent());
+
+    await user.click(screen.getByLabelText(/10\/10\/2026/));
+    await user.click(screen.getByLabelText(/11\/10\/2026/));
+    await user.click(screen.getByLabelText(/10\/10\/2026/));
+    await user.click(screen.getByLabelText(/Casa do Edu/));
+    await user.click(screen.getByRole('button', { name: 'Confirmar voto' }));
+
+    expect(vi.mocked(eventService.voteDateLocation).mock.calls[0][3]).toEqual(['d2']);
+  });
+
+  it('exige ao menos uma data e um local para votar', async () => {
     const user = userEvent.setup();
     await open(dateEvent());
 
     await user.click(screen.getByRole('button', { name: 'Confirmar voto' }));
+    await user.click(screen.getByLabelText(/10\/10\/2026/));
+    await user.click(screen.getByRole('button', { name: 'Confirmar voto' }));
 
     expect(eventService.voteDateLocation).not.toHaveBeenCalled();
-    expect(toast.error).toHaveBeenCalledWith('Escolha uma data e um local para votar.');
+    expect(toast.error).toHaveBeenCalledTimes(2);
+    expect(toast.error).toHaveBeenLastCalledWith(
+      'Marque ao menos uma data e escolha um local para votar.',
+    );
   });
 
-  it('quem já votou vê o voto marcado e o botão "Atualizar voto"', async () => {
+  it('quem já votou vê as datas marcadas e o botão "Atualizar voto"', async () => {
     resetAuth();
     vi.mocked(groupService.fetchGroupMembers).mockResolvedValue(members);
-    await open(dateEvent({ votesDate: { 'u-edu': 'd2' }, votesLocation: { 'u-edu': 'l1' } }));
+    await open(
+      dateEvent({ votesDate: { 'u-edu': ['d1', 'd2'] }, votesLocation: { 'u-edu': 'l1' } }),
+    );
 
+    expect((screen.getByLabelText(/10\/10\/2026/) as HTMLInputElement).checked).toBe(true);
     expect((screen.getByLabelText(/11\/10\/2026/) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByRole('button', { name: 'Atualizar voto' })).toBeTruthy();
   });
 
-  it('o criador fecha a etapa: pede confirmação e avança com as opções marcadas', async () => {
+  it('data que o organizador removeu depois do voto não volta a ser marcada', async () => {
+    const user = userEvent.setup();
+    await open(
+      dateEvent({ votesDate: { 'u-edu': ['d1', 'removida'] }, votesLocation: { 'u-edu': 'l1' } }),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Atualizar voto' }));
+
+    expect(vi.mocked(eventService.voteDateLocation).mock.calls[0][3]).toEqual(['d1']);
+  });
+
+  it('cada data conta um voto por pessoa que a marcou', async () => {
+    await open(
+      dateEvent({
+        votesDate: { 'u-bia': ['d1', 'd2'], 'u-caio': ['d1'] },
+        votesLocation: {},
+      }),
+    );
+
+    expect(screen.getAllByTitle('2 voto(s)')).toHaveLength(1);
+    expect(screen.getAllByTitle('1 voto(s)')).toHaveLength(1);
+  });
+
+  it('destaca a opção líder (uma data e um local)', async () => {
+    await open(dateEvent());
+
+    // 10/10 lidera as datas e Ludoteca Café é o único local votado
+    expect(screen.getAllByText('Líder')).toHaveLength(2);
+    expect(screen.queryByText('Empate')).toBeNull();
+  });
+
+  it('em empate de datas marca "Empate" nas empatadas', async () => {
+    await open(dateEvent({ votesDate: { 'u-bia': ['d1'], 'u-caio': ['d2'] } }));
+
+    expect(screen.getAllByText('Empate')).toHaveLength(2);
+  });
+
+  it('sem nenhum voto ninguém é líder', async () => {
+    await open(dateEvent({ votesDate: {}, votesLocation: {} }));
+
+    expect(screen.queryByText('Líder')).toBeNull();
+    expect(screen.queryByText('Empate')).toBeNull();
+  });
+
+  it('o organizador fecha a etapa numa janela já com os líderes marcados', async () => {
     const user = userEvent.setup();
     await open(dateEvent());
 
     await user.click(screen.getByRole('button', { name: /Cravar vencedores/ }));
-    expect(toast.error).toHaveBeenCalledWith(
-      'Você precisa selecionar uma Data e um Local para definir como vencedores.',
-    );
-
-    await user.click(screen.getByLabelText(/10\/10\/2026/));
-    await user.click(screen.getByLabelText(/Ludoteca Café/));
-    await user.click(screen.getByRole('button', { name: /Cravar vencedores/ }));
+    const dialog = within(screen.getByRole('dialog'));
+    expect((dialog.getByLabelText(/10\/10\/2026/) as HTMLInputElement).checked).toBe(true);
+    expect((dialog.getByLabelText(/Ludoteca Café/) as HTMLInputElement).checked).toBe(true);
+    expect(dialog.getByText('2 voto(s)')).toBeTruthy();
     expect(eventService.advanceToGamesVoting).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('button', { name: 'Confirmar e ir para jogos' }));
+    await user.click(dialog.getByRole('button', { name: 'Confirmar e ir para jogos' }));
     expect(eventService.advanceToGamesVoting).toHaveBeenCalledWith('g1', 'e1', 'd1', 'l2');
+  });
+
+  it('o organizador pode escolher outra opção que não a líder', async () => {
+    const user = userEvent.setup();
+    await open(dateEvent());
+
+    await user.click(screen.getByRole('button', { name: /Cravar vencedores/ }));
+    const dialog = within(screen.getByRole('dialog'));
+    await user.click(dialog.getByLabelText(/11\/10\/2026/));
+    await user.click(dialog.getByLabelText(/Casa do Edu/));
+    await user.click(dialog.getByRole('button', { name: 'Confirmar e ir para jogos' }));
+
+    expect(eventService.advanceToGamesVoting).toHaveBeenCalledWith('g1', 'e1', 'd2', 'l1');
+  });
+
+  it('em empate nada vem marcado: o organizador precisa escolher antes de confirmar', async () => {
+    const user = userEvent.setup();
+    await open(dateEvent({ votesDate: { 'u-bia': ['d1'], 'u-caio': ['d2'] } }));
+
+    await user.click(screen.getByRole('button', { name: /Cravar vencedores/ }));
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('Empate nos votos: escolha uma das datas.')).toBeTruthy();
+    const confirm = dialog.getByRole('button', {
+      name: 'Confirmar e ir para jogos',
+    }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+
+    await user.click(dialog.getByLabelText(/11\/10\/2026/));
+    expect(confirm.disabled).toBe(false);
+    await user.click(confirm);
+    expect(eventService.advanceToGamesVoting).toHaveBeenCalledWith('g1', 'e1', 'd2', 'l2');
+  });
+
+  it('sem nenhum voto o organizador também escolhe, e só confirma com data e local', async () => {
+    const user = userEvent.setup();
+    await open(dateEvent({ votesDate: {}, votesLocation: {} }));
+
+    await user.click(screen.getByRole('button', { name: /Cravar vencedores/ }));
+    const dialog = within(screen.getByRole('dialog'));
+    const confirm = dialog.getByRole('button', {
+      name: 'Confirmar e ir para jogos',
+    }) as HTMLButtonElement;
+    expect(confirm.disabled).toBe(true);
+
+    await user.click(dialog.getByLabelText(/10\/10\/2026/));
+    expect(confirm.disabled).toBe(true);
+    await user.click(dialog.getByLabelText(/Casa do Edu/));
+    expect(confirm.disabled).toBe(false);
   });
 
   it('o criador também pode excluir, só depois de confirmar', async () => {
@@ -456,8 +573,6 @@ describe('Evento — avisos ao grupo', () => {
     const user = userEvent.setup();
     await open(dateEvent());
 
-    await user.click(screen.getByLabelText(/10\/10\/2026/));
-    await user.click(screen.getByLabelText(/Ludoteca Café/));
     await user.click(screen.getByRole('button', { name: /Cravar vencedores/ }));
     await user.click(screen.getByRole('button', { name: 'Confirmar e ir para jogos' }));
 

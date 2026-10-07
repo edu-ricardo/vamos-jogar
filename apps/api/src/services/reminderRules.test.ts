@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  dateVotesByUser,
+  datesOfVote,
   describeReminderOutcome,
   getPendingVoterIds,
   isReminderDue,
@@ -10,7 +12,11 @@ describe('getPendingVoterIds', () => {
   const members = ['ana', 'bia', 'caio'];
 
   it('retorna quem não votou na data durante VOTING_DATE', () => {
-    const event = { status: 'VOTING_DATE', votesDate: { ana: 'd1' }, votesGames: { bia: ['g1'] } };
+    const event = {
+      status: 'VOTING_DATE',
+      votesDate: { ana: ['d1', 'd2'] },
+      votesGames: { bia: ['g1'] },
+    };
     expect(getPendingVoterIds(members, event)).toEqual(['bia', 'caio']);
   });
 
@@ -62,5 +68,34 @@ describe('describeReminderOutcome', () => {
     expect(describeReminderOutcome(3, 1)).toBe(
       'Notificação enviada para 1 de 3 pessoa(s) que ainda não votaram. Quem não ativou as notificações não recebe.',
     );
+  });
+});
+
+describe('datesOfVote', () => {
+  it('usa a lista de datas quando existe', () => {
+    expect(datesOfVote({ dateOptionIds: ['d1', 'd2'], dateOptionId: 'd1' })).toEqual(['d1', 'd2']);
+  });
+
+  it('em voto da versão anterior, usa a data única', () => {
+    expect(datesOfVote({ dateOptionId: 'd2' })).toEqual(['d2']);
+    expect(datesOfVote({ dateOptionIds: [], dateOptionId: 'd2' })).toEqual(['d2']);
+  });
+
+  it('sem data nenhuma, lista vazia', () => {
+    expect(datesOfVote({})).toEqual([]);
+    expect(datesOfVote({ dateOptionIds: [], dateOptionId: '' })).toEqual([]);
+  });
+});
+
+describe('dateVotesByUser', () => {
+  it('lista as datas de quem já marcou alguma e ignora voto vazio ou sem dono', () => {
+    expect(
+      dateVotesByUser([
+        { user: 'ana', dateOptionIds: ['d1', 'd2'] },
+        { user: 'bia', dateOptionId: 'd3' },
+        { user: 'caio', dateOptionIds: [], dateOptionId: '' },
+        { user: '', dateOptionIds: ['d1'] },
+      ]),
+    ).toEqual({ ana: ['d1', 'd2'], bia: ['d3'] });
   });
 });

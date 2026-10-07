@@ -40,7 +40,7 @@ export interface Event {
   finalDateId?: string;
   finalLocationId?: string;
   finalGameIds?: string[];
-  votesDate: { [userId: string]: string }; // userId -> dateOption.id
+  votesDate: { [userId: string]: string[] }; // userId -> datas em que a pessoa pode (várias)
   votesLocation: { [userId: string]: string }; // userId -> locationOption.id
   votesGames?: { [userId: string]: string[] }; // userId -> array of gameOption.id
   createdAt: any;
@@ -73,7 +73,7 @@ export interface EventRepository {
     groupId: string,
     eventId: string,
     userId: string,
-    dateOptionId: string,
+    dateOptionIds: string[],
     locationOptionId: string,
   ): Promise<void>;
   fetchFavoriteLocations(uid: string): Promise<FavoriteLocation[]>;

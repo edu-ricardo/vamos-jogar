@@ -1,6 +1,11 @@
 import type PocketBase from 'pocketbase/cjs';
 import type { PushMessage } from './pushService';
-import { getPendingVoterIds, isReminderDue, reminderMessage } from './reminderRules';
+import {
+  dateVotesByUser,
+  getPendingVoterIds,
+  isReminderDue,
+  reminderMessage,
+} from './reminderRules';
 
 // A versão CommonJS do SDK não exporta o tipo RecordModel
 type RecordModel = { id: string; [field: string]: any };
@@ -47,7 +52,7 @@ export const createReminderService = (getAdmin: () => Promise<PocketBase>, notif
       memberships.map((m) => m.user),
       {
         status: event.status,
-        votesDate: votesFrom('dateOptionId'),
+        votesDate: dateVotesByUser(votes),
         votesGames: votesFrom('gameIds'),
       },
     );
