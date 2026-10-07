@@ -24,6 +24,7 @@ import { Modal } from '../components/Modal';
 import { GameFilters, emptyGameFilters, toCollectionFilters } from '../components/GameFilters';
 import { filterCollection } from '../services/ludotecaFilters';
 import { buildIcs, downloadIcs } from '../services/calendarFile';
+import { gameMeta } from '../services/gameMeta';
 import { EventFormModal, type EventFormValues } from '../components/EventFormModal';
 import toast from 'react-hot-toast';
 import './EventDetails.scss';
@@ -969,15 +970,7 @@ export const EventDetails = () => {
                     )}
                     <div className="event-option-info">
                       <strong>{g.name}</strong>
-                      <span className="muted">
-                        {[
-                          g.playtime && `⏱ ${g.playtime} min`,
-                          (g.minPlayers || g.maxPlayers) &&
-                            `👥 ${g.minPlayers || '?'}${g.maxPlayers && g.maxPlayers !== g.minPlayers ? `-${g.maxPlayers}` : ''}`,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
+                      <span className="muted">{gameMeta(g)}</span>
                     </div>
                   </label>
                 ))}

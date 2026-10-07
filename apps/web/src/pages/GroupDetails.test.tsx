@@ -7,6 +7,7 @@ import { fakeAuth, resetAuth } from '../test/auth';
 import { renderPage } from '../test/renderPage';
 import { groupService } from '../services/groupService';
 import { eventService } from '../services/eventService';
+import { ludotecaService } from '../services/ludotecaService';
 import { GroupDetails } from './GroupDetails';
 
 vi.mock('../context/AuthContext', async () => (await import('../test/auth')).authModuleMock);
@@ -28,7 +29,9 @@ vi.mock('../services/eventService', () => ({
     notifyGroup: vi.fn(),
   },
 }));
-vi.mock('../services/ludotecaService', () => ({ ludotecaService: {} }));
+vi.mock('../services/ludotecaService', () => ({
+  ludotecaService: { fetchGroupGames: vi.fn() },
+}));
 
 const members = [
   { id: 'u-ana', name: 'Ana' },
@@ -181,5 +184,100 @@ describe('Grupo — criar evento', () => {
 
     await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith('Erro ao criar evento.'));
     expect(eventService.notifyGroup).not.toHaveBeenCalled();
+  });
+});
+
+describe('Grupo — jogos do grupo', () => {
+  const groupGames = [
+    {
+      key: 'azul',
+      name: 'Azul',
+      image: '',
+      playtime: '45',
+      minPlayers: 2,
+      maxPlayers: 4,
+      owners: [{ id: 'u-ana', name: 'Ana' }],
+    },
+    {
+      key: 'catan',
+      name: 'Catan',
+      image: 'capa.jpg',
+      playtime: '60',
+      minPlayers: 3,
+      maxPlayers: 4,
+      owners: [
+        { id: 'u-ana', name: 'Ana' },
+        { id: 'u-edu', name: 'Edu' },
+      ],
+    },
+  ];
+
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([]);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    vi.mocked(ludotecaService.fetchGroupGames).mockResolvedValue(groupGames);
+  });
+
+  it('só carrega as ludotecas quando a pessoa pede', async () => {
+    await open('u-ana');
+
+    expect(screen.getByRole('button', { name: 'Ver jogos do grupo' })).toBeTruthy();
+    expect(ludotecaService.fetchGroupGames).not.toHaveBeenCalled();
+  });
+
+  it('mostra cada jogo uma vez, com quem tem e os dados do jogo', async () => {
+    const user = userEvent.setup();
+    await open('u-ana');
+
+    await user.click(screen.getByRole('button', { name: 'Ver jogos do grupo' }));
+
+    expect(ludotecaService.fetchGroupGames).toHaveBeenCalledWith(members);
+    expect(await screen.findByText('Com: Ana, Edu')).toBeTruthy();
+    expect(screen.getByText('Com: Ana')).toBeTruthy();
+    expect(screen.getByText('⏱ 60 min · 👥 3-4')).toBeTruthy();
+    expect(screen.getByText('⏱ 45 min · 👥 2-4')).toBeTruthy();
+  });
+
+  it('a busca acha pelo jogo e também por quem o tem', async () => {
+    const user = userEvent.setup();
+    await open('u-ana');
+    await user.click(screen.getByRole('button', { name: 'Ver jogos do grupo' }));
+    await screen.findByText('Catan');
+
+    await user.type(screen.getByLabelText('Buscar nos jogos do grupo'), 'edu');
+    expect(screen.getByText('Catan')).toBeTruthy();
+    expect(screen.queryByText('Azul')).toBeNull();
+
+    await user.clear(screen.getByLabelText('Buscar nos jogos do grupo'));
+    await user.type(screen.getByLabelText('Buscar nos jogos do grupo'), 'zzz');
+    expect(screen.getByText('Nenhum jogo ou pessoa combina com a busca.')).toBeTruthy();
+  });
+
+  it('avisa quando ninguém cadastrou jogos', async () => {
+    const user = userEvent.setup();
+    vi.mocked(ludotecaService.fetchGroupGames).mockResolvedValue([]);
+    await open('u-ana');
+
+    await user.click(screen.getByRole('button', { name: 'Ver jogos do grupo' }));
+
+    expect(await screen.findByText('Nenhum membro cadastrou jogos ainda.')).toBeTruthy();
+  });
+
+  it('se não conseguir carregar, avisa e deixa tentar de novo', async () => {
+    const user = userEvent.setup();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(ludotecaService.fetchGroupGames).mockRejectedValue(new Error('fora do ar'));
+    await open('u-ana');
+
+    await user.click(screen.getByRole('button', { name: 'Ver jogos do grupo' }));
+
+    await vi.waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('Erro ao carregar as ludotecas do grupo.'),
+    );
+    expect(
+      (screen.getByRole('button', { name: 'Ver jogos do grupo' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
   });
 });

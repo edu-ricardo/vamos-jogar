@@ -5,6 +5,8 @@ import { eventService, type Event, type FavoriteLocation } from '../services/eve
 import { EVENT_STATUS_LABEL } from '../services/eventResults';
 import { groupService, type Group } from '../services/groupService';
 import { ludotecaService, type Game } from '../services/ludotecaService';
+import { searchGroupGames, type GroupGame } from '../services/groupGames';
+import { gameMeta } from '../services/gameMeta';
 import { Modal } from '../components/Modal';
 import { EventFormModal, type EventFormValues } from '../components/EventFormModal';
 import toast from 'react-hot-toast';
@@ -16,6 +18,11 @@ export const GroupDetails = () => {
 
   const navigate = useNavigate();
   const [showLeaveModal, setShowLeaveModal] = useState(false);
+
+  // Jogos de todos os membros (carregados só quando a pessoa pede)
+  const [groupGames, setGroupGames] = useState<GroupGame[] | null>(null);
+  const [gamesLoading, setGamesLoading] = useState(false);
+  const [gamesQuery, setGamesQuery] = useState('');
 
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +85,18 @@ export const GroupDetails = () => {
       loadGroupData();
     } catch (err) {
       toast.error('Erro ao remover membro.');
+    }
+  };
+
+  const loadGroupGames = async () => {
+    setGamesLoading(true);
+    try {
+      setGroupGames(await ludotecaService.fetchGroupGames(members));
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao carregar as ludotecas do grupo.');
+    } finally {
+      setGamesLoading(false);
     }
   };
 
@@ -157,30 +176,82 @@ export const GroupDetails = () => {
       </header>
 
       <div className="group-columns">
-        <section>
-          <h2 className="group-section-title">Eventos</h2>
-          {loading ? (
-            <p className="empty-state">Carregando eventos...</p>
-          ) : events.length === 0 ? (
-            <p className="card empty-state">
-              Nenhum evento criado ainda. Que tal marcar a próxima jogatina?
-            </p>
-          ) : (
-            <ul className="group-events">
-              {events.map((ev) => (
-                <li key={ev.id}>
-                  <Link to={`/event/${id}/${ev.id}`} className="card group-event">
-                    <div>
-                      <h3>{ev.title}</h3>
-                      <span className="chip">{EVENT_STATUS_LABEL[ev.status]}</span>
-                    </div>
-                    <span className="muted">&rarr;</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <div className="group-main">
+          <section>
+            <h2 className="group-section-title">Eventos</h2>
+            {loading ? (
+              <p className="empty-state">Carregando eventos...</p>
+            ) : events.length === 0 ? (
+              <p className="card empty-state">
+                Nenhum evento criado ainda. Que tal marcar a próxima jogatina?
+              </p>
+            ) : (
+              <ul className="group-events">
+                {events.map((ev) => (
+                  <li key={ev.id}>
+                    <Link to={`/event/${id}/${ev.id}`} className="card group-event">
+                      <div>
+                        <h3>{ev.title}</h3>
+                        <span className="chip">{EVENT_STATUS_LABEL[ev.status]}</span>
+                      </div>
+                      <span className="muted">&rarr;</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="group-section-title">Jogos do grupo</h2>
+            {groupGames === null ? (
+              <div className="card group-games-intro">
+                <p className="muted">Veja todos os jogos que os membros têm e quem leva cada um.</p>
+                <button
+                  onClick={loadGroupGames}
+                  disabled={gamesLoading || members.length === 0}
+                  className="btn-secondary"
+                >
+                  {gamesLoading ? 'Carregando...' : 'Ver jogos do grupo'}
+                </button>
+              </div>
+            ) : (
+              <div className="card group-games">
+                <input
+                  type="search"
+                  placeholder="Buscar jogo ou pessoa..."
+                  aria-label="Buscar nos jogos do grupo"
+                  value={gamesQuery}
+                  onChange={(e) => setGamesQuery(e.target.value)}
+                />
+                {groupGames.length === 0 ? (
+                  <p className="empty-state">Nenhum membro cadastrou jogos ainda.</p>
+                ) : searchGroupGames(groupGames, gamesQuery).length === 0 ? (
+                  <p className="empty-state">Nenhum jogo ou pessoa combina com a busca.</p>
+                ) : (
+                  <ul className="group-games-list">
+                    {searchGroupGames(groupGames, gamesQuery).map((g) => (
+                      <li key={g.key}>
+                        {g.image ? (
+                          <img src={g.image} alt="" />
+                        ) : (
+                          <div className="group-game-thumb" />
+                        )}
+                        <div>
+                          <strong>{g.name}</strong>
+                          {gameMeta(g) && <small className="muted">{gameMeta(g)}</small>}
+                          <small className="group-game-owners">
+                            Com: {g.owners.map((o) => o.name).join(', ')}
+                          </small>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </section>
+        </div>
 
         <aside className="card group-members">
           <h2 className="group-section-title">Membros ({members.length})</h2>

@@ -1,5 +1,6 @@
 import { backend } from './backend';
 import { apiRequest } from './apiClient';
+import { buildGroupGames, type GameOwner } from './groupGames';
 
 export interface Game {
   id: string;
@@ -29,6 +30,17 @@ export interface LudotecaRepository {
 
 export const ludotecaService = {
   ...backend.ludoteca,
+
+  // Ludotecas de todos os membros juntas: cada jogo uma vez, com quem tem
+  fetchGroupGames: async (members: GameOwner[]) =>
+    buildGroupGames(
+      await Promise.all(
+        members.map(async (owner) => ({
+          owner,
+          games: await backend.ludoteca.fetchUserCollection(owner.id),
+        })),
+      ),
+    ),
 
   searchExternalGames: async (
     query: string,

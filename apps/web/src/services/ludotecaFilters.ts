@@ -8,7 +8,8 @@ export interface CollectionFilters {
   maxPlaytime?: number;
 }
 
-const normalize = (value: string) => value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+export const normalize = (value: string) =>
+  value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 // "60" → 60; "90-120" → 120 (vale o pior caso); vazio ou sem número → undefined
 export const parsePlaytime = (playtime: string | undefined): number | undefined => {
