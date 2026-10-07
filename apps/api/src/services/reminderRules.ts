@@ -22,6 +22,15 @@ export const getPendingVoterIds = (memberIds: string[], event: EventVotingState)
 export const isReminderDue = (lastSentAt: Date | undefined, now: Date): boolean =>
   !lastSentAt || now.getTime() - lastSentAt.getTime() >= REMINDER_INTERVAL_MS;
 
+// Resumo para quem cobrou: quantos ainda não votaram e quantos receberam a notificação
+export const describeReminderOutcome = (pending: number, notified: number): string => {
+  if (pending === 0) return 'Todo mundo já votou.';
+  return (
+    `Notificação enviada para ${notified} de ${pending} pessoa(s) que ainda não votaram.` +
+    (notified < pending ? ' Quem não ativou as notificações não recebe.' : '')
+  );
+};
+
 // Texto da notificação de voto pendente; ao tocar, abre o próprio evento
 export const reminderMessage = (event: {
   id: string;

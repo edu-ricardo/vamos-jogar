@@ -2,6 +2,9 @@ import type PocketBase from 'pocketbase/cjs';
 import { getAdminClient } from '../lib/pocketbase';
 import { accountService } from './accountService';
 import { generateTemporaryPassword, parseAdminEmails } from './adminRules';
+import { reminderService } from './notifications';
+import type { AdminReminderResult } from './reminderService';
+import { describeReminderOutcome, getPendingVoterIds } from './reminderRules';
 import type { AuthenticatedUser } from './userTokenService';
 
 // Recusa de uma ação do painel, com a mensagem mostrada a quem tentou
@@ -35,6 +38,18 @@ export interface AdminGroup {
   events: number;
 }
 
+// Evento ainda em votação, com quem falta votar na etapa atual
+export interface AdminEvent {
+  id: string;
+  title: string;
+  status: 'VOTING_DATE' | 'VOTING_GAMES';
+  groupId: string;
+  groupName: string;
+  pendingNames: string[];
+  // Último lembrete enviado (automático ou manual); vazio se nunca houve
+  lastReminderSentAt: string;
+}
+
 export interface AdminLog {
   id: string;
   actorEmail: string;
@@ -54,6 +69,7 @@ export const createAdminService = (
   getAdmin: () => Promise<PocketBase>,
   deleteAccount: (uid: string) => Promise<void>,
   fixedAdminEmails: () => string[],
+  remindEvent: (eventId: string) => Promise<AdminReminderResult>,
 ) => {
   const isFixedAdmin = (email: string) => fixedAdminEmails().includes(email.toLowerCase());
 
@@ -218,6 +234,65 @@ export const createAdminService = (
       );
     },
 
+    listOpenEvents: async (): Promise<AdminEvent[]> => {
+      const pb = await getAdmin();
+      const [events, memberships, votes] = await Promise.all([
+        pb.collection('events').getFullList({
+          filter: "status = 'VOTING_DATE' || status = 'VOTING_GAMES'",
+          expand: 'group',
+          sort: 'created',
+        }),
+        pb.collection('memberships').getFullList({ sort: 'created', expand: 'user' }),
+        pb.collection('votes').getFullList(),
+      ]);
+      return events.map((event) => {
+        const members = memberships.filter((m) => m.group === event.group);
+        const votesFrom = (field: string) =>
+          Object.fromEntries(
+            votes
+              .filter((v) => v.event === event.id && v.user && v[field])
+              .map((v) => [v.user, v[field]]),
+          );
+        const pendingIds = getPendingVoterIds(
+          members.map((m) => m.user),
+          {
+            status: event.status,
+            votesDate: votesFrom('dateOptionId'),
+            votesGames: votesFrom('gameIds'),
+          },
+        );
+        return {
+          id: event.id,
+          title: event.title,
+          status: event.status,
+          groupId: event.group,
+          groupName: event.expand?.group?.name ?? '',
+          pendingNames: members
+            .filter((m) => pendingIds.includes(m.user))
+            .map((m) => m.nickname || m.expand?.user?.name || m.expand?.user?.email || 'Sem nome'),
+          lastReminderSentAt: event.lastReminderSentAt || '',
+        };
+      });
+    },
+
+    // Cobra agora quem ainda não votou; devolve a mensagem de resumo para o painel
+    remindEvent: async (actor: AuthenticatedUser, eventId: string): Promise<string> => {
+      const result = await remindEvent(eventId);
+      if (!result.ok) {
+        throw result.reason === 'EVENT_NOT_FOUND'
+          ? new AdminActionError('Evento não encontrado.', 404)
+          : new AdminActionError('O evento já foi confirmado.');
+      }
+      const pb = await getAdmin();
+      const event = await pb.collection('events').getOne(eventId, { expand: 'group' });
+      await log(
+        actor,
+        'cobranca_enviada',
+        `${event.expand?.group?.name ?? ''}: ${event.title} (${result.notified} de ${result.pending})`,
+      );
+      return describeReminderOutcome(result.pending, result.notified);
+    },
+
     listLogs: async (): Promise<AdminLog[]> => {
       const pb = await getAdmin();
       const { items } = await pb.collection('admin_logs').getList(1, 100, { sort: '-created' });
@@ -232,6 +307,9 @@ export const createAdminService = (
   };
 };
 
-export const adminService = createAdminService(getAdminClient, accountService.deleteAccount, () =>
-  parseAdminEmails(process.env.APP_ADMIN_EMAILS),
+export const adminService = createAdminService(
+  getAdminClient,
+  accountService.deleteAccount,
+  () => parseAdminEmails(process.env.APP_ADMIN_EMAILS),
+  reminderService.remindEventAsAppAdmin,
 );

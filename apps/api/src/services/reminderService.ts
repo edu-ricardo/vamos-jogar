@@ -16,6 +16,10 @@ export type ForceReminderResult =
   | ({ ok: true } & ReminderOutcome)
   | { ok: false; reason: 'EVENT_NOT_FOUND' | 'FORBIDDEN' | 'EVENT_CONFIRMED' };
 
+// Cobrança feita por admin do app: não depende de ser criador do evento ou admin do grupo
+export type AdminReminderResult =
+  ({ ok: true } & ReminderOutcome) | { ok: false; reason: 'EVENT_NOT_FOUND' | 'EVENT_CONFIRMED' };
+
 type NotifyUsers = (userIds: string[], message: PushMessage) => Promise<number>;
 
 // O PocketBase devolve datas como "2026-10-04 03:00:00.000Z"
@@ -80,6 +84,18 @@ export const createReminderService = (getAdmin: () => Promise<PocketBase>, notif
         notified += (await remindPendingVoters(pb, event)).notified;
       }
       return notified;
+    },
+
+    // Chamado pelo painel de admin do app
+    remindEventAsAppAdmin: async (eventId: string): Promise<AdminReminderResult> => {
+      const pb = await getAdmin();
+      const [event] = await pb.collection('events').getFullList({
+        filter: pb.filter('id = {:eventId}', { eventId }),
+        expand: 'group',
+      });
+      if (!event) return { ok: false, reason: 'EVENT_NOT_FOUND' };
+      if (event.status === 'CONFIRMED') return { ok: false, reason: 'EVENT_CONFIRMED' };
+      return { ok: true, ...(await remindPendingVoters(pb, event)) };
     },
 
     // Chamado pelo botão "Cobrar Atrasados": só o criador do evento ou o admin do grupo

@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { getPendingVoterIds, isReminderDue, REMINDER_INTERVAL_MS } from './reminderRules';
+import {
+  describeReminderOutcome,
+  getPendingVoterIds,
+  isReminderDue,
+  REMINDER_INTERVAL_MS,
+} from './reminderRules';
 
 describe('getPendingVoterIds', () => {
   const members = ['ana', 'bia', 'caio'];
@@ -42,5 +47,20 @@ describe('isReminderDue', () => {
   it('envia a partir de 3 dias', () => {
     const lastSent = new Date(now.getTime() - REMINDER_INTERVAL_MS);
     expect(isReminderDue(lastSent, now)).toBe(true);
+  });
+});
+
+describe('describeReminderOutcome', () => {
+  it('avisa quando todo mundo já votou', () => {
+    expect(describeReminderOutcome(0, 0)).toBe('Todo mundo já votou.');
+  });
+
+  it('informa quantos foram avisados e lembra de quem não ativou as notificações', () => {
+    expect(describeReminderOutcome(2, 2)).toBe(
+      'Notificação enviada para 2 de 2 pessoa(s) que ainda não votaram.',
+    );
+    expect(describeReminderOutcome(3, 1)).toBe(
+      'Notificação enviada para 1 de 3 pessoa(s) que ainda não votaram. Quem não ativou as notificações não recebe.',
+    );
   });
 });

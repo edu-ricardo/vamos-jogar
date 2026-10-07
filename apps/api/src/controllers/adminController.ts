@@ -62,6 +62,14 @@ export const removeMember = run('remoção de membro', async (req, res) => {
   res.status(204).send();
 });
 
+export const listEvents = run('eventos', async (_req, res) => {
+  res.json(await adminService.listOpenEvents());
+});
+
+export const remindEvent = run('cobrança de votos', async (req, res) => {
+  res.json({ message: await adminService.remindEvent(actor(req), String(req.params.id)) });
+});
+
 export const listLogs = run('registro', async (_req, res) => {
   res.json(await adminService.listLogs());
 });

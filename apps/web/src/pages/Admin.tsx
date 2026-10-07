@@ -3,14 +3,16 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import {
   adminService,
+  type AdminEvent,
   type AdminGroup,
   type AdminLog,
   type AdminUser,
 } from '../services/adminService';
 import { Modal } from '../components/Modal';
+import { EVENT_STATUS_LABEL } from '../services/eventResults';
 import './Admin.scss';
 
-type Tab = 'users' | 'groups' | 'logs';
+type Tab = 'users' | 'groups' | 'events' | 'logs';
 
 const ACTION_LABEL: Record<string, string> = {
   senha_temporaria: 'Senha temporária gerada',
@@ -19,6 +21,7 @@ const ACTION_LABEL: Record<string, string> = {
   conta_excluida: 'Conta excluída',
   grupo_novo_admin: 'Novo admin de grupo',
   membro_removido: 'Membro removido de grupo',
+  cobranca_enviada: 'Cobrança de votos enviada',
 };
 
 const formatDateTime = (iso: string) =>
@@ -38,6 +41,7 @@ export const Admin = () => {
   const [tab, setTab] = useState<Tab>('users');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [groups, setGroups] = useState<AdminGroup[]>([]);
+  const [events, setEvents] = useState<AdminEvent[]>([]);
   const [logs, setLogs] = useState<AdminLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -54,6 +58,7 @@ export const Admin = () => {
       const token = await user.getIdToken();
       if (current === 'users') setUsers(await adminService.listUsers(token));
       if (current === 'groups') setGroups(await adminService.listGroups(token));
+      if (current === 'events') setEvents(await adminService.listEvents(token));
       if (current === 'logs') setLogs(await adminService.listLogs(token));
     } catch (err) {
       setError((err as Error).message);
@@ -118,6 +123,7 @@ export const Admin = () => {
           [
             ['users', 'Usuários'],
             ['groups', 'Grupos'],
+            ['events', 'Eventos'],
             ['logs', 'Registro'],
           ] as const
         ).map(([id, label]) => (
@@ -250,6 +256,41 @@ export const Admin = () => {
                   </li>
                 ))}
               </ul>
+            </li>
+          ))}
+        </ul>
+      ) : tab === 'events' ? (
+        <ul className="admin-list">
+          {events.length === 0 && (
+            <p className="empty-state">Nenhum evento em votação no momento.</p>
+          )}
+          {events.map((ev) => (
+            <li key={ev.id} className="card admin-event">
+              <div className="admin-user-info">
+                <strong>
+                  {ev.title}
+                  <span className="chip">{EVENT_STATUS_LABEL[ev.status]}</span>
+                </strong>
+                <span className="muted">{ev.groupName}</span>
+                <small className="muted">
+                  {ev.pendingNames.length === 0
+                    ? 'Todo mundo já votou.'
+                    : `Falta votar: ${ev.pendingNames.join(', ')}`}
+                  {ev.lastReminderSentAt &&
+                    ` · último lembrete em ${formatDateTime(ev.lastReminderSentAt)}`}
+                </small>
+              </div>
+              <button
+                className="btn-secondary btn-sm"
+                disabled={busy || ev.pendingNames.length === 0}
+                onClick={() =>
+                  run(async (token) => {
+                    toast.success(await adminService.remindEvent(token, ev.id));
+                  }, '')
+                }
+              >
+                Cobrar quem não votou
+              </button>
             </li>
           ))}
         </ul>

@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { reminderService } from '../services/notifications';
+import { describeReminderOutcome } from '../services/reminderRules';
 
 const FORCE_ERRORS = {
   EVENT_NOT_FOUND: { status: 404, error: 'Evento não encontrado.' },
@@ -23,13 +24,7 @@ export const cronController = {
         const { status, error } = FORCE_ERRORS[result.reason];
         return res.status(status).json({ error });
       }
-      const message =
-        result.pending === 0
-          ? 'Todo mundo já votou.'
-          : `Notificação enviada para ${result.notified} de ${result.pending} pessoa(s) que ainda não votaram.` +
-            (result.notified < result.pending
-              ? ' Quem não ativou as notificações não recebe.'
-              : '');
+      const message = describeReminderOutcome(result.pending, result.notified);
       return res.status(200).json({ success: true, message });
     } catch (err) {
       console.error(err);

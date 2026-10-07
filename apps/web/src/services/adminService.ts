@@ -22,6 +22,18 @@ export interface AdminGroup {
   events: number;
 }
 
+export interface AdminEvent {
+  id: string;
+  title: string;
+  status: 'VOTING_DATE' | 'VOTING_GAMES';
+  groupId: string;
+  groupName: string;
+  // Quem ainda não votou na etapa atual
+  pendingNames: string[];
+  // Vazio se nunca houve lembrete
+  lastReminderSentAt: string;
+}
+
 export interface AdminLog {
   id: string;
   actorEmail: string;
@@ -90,6 +102,22 @@ export const adminService = {
       idToken,
       fallbackError: 'Erro ao remover o membro.',
     }),
+
+  listEvents: (idToken: string) =>
+    apiRequest<AdminEvent[]>('/api/admin/events', {
+      idToken,
+      fallbackError: 'Erro ao carregar eventos.',
+    }),
+
+  // Devolve o resumo para mostrar a quem cobrou ("Notificação enviada para 2 de 3...")
+  remindEvent: async (idToken: string, eventId: string): Promise<string> =>
+    (
+      await apiRequest<{ message: string }>(`/api/admin/events/${eventId}/reminders`, {
+        method: 'POST',
+        idToken,
+        fallbackError: 'Erro ao cobrar os votos.',
+      })
+    ).message,
 
   listLogs: (idToken: string) =>
     apiRequest<AdminLog[]>('/api/admin/logs', {

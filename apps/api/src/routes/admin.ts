@@ -4,9 +4,11 @@ import { adminService } from '../services/adminService';
 import {
   deleteUser,
   getStatus,
+  listEvents,
   listGroups,
   listLogs,
   listUsers,
+  remindEvent,
   removeMember,
   setAdmin,
   setTemporaryPassword,
@@ -37,6 +39,8 @@ router.delete('/users/:id', deleteUser);
 router.get('/groups', listGroups);
 router.post('/groups/:id/admin', transferGroupAdmin);
 router.delete('/groups/:id/members/:userId', removeMember);
+router.get('/events', listEvents);
+router.post('/events/:id/reminders', remindEvent);
 router.get('/logs', listLogs);
 
 export default router;

@@ -1,7 +1,8 @@
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import PocketBase from 'pocketbase';
 import { AdminActionError, createAdminService } from '../apps/api/src/services/adminService';
 import { createAccountService } from '../apps/api/src/services/accountService';
+import { createReminderService } from '../apps/api/src/services/reminderService';
 import { resetAppData } from '../apps/api/scripts/migrate/importBackup';
 
 // Painel de admin contra o PocketBase real. Cenário: "edu" é admin fixo (APP_ADMIN_EMAILS);
@@ -16,9 +17,14 @@ describeIfPocketBase('Painel de admin', () => {
   const admin = new PocketBase(url);
   admin.autoCancellation(false);
   const getAdmin = async () => admin;
-  const service = createAdminService(getAdmin, createAccountService(getAdmin).deleteAccount, () => [
-    'edu@vamosjogar.test',
-  ]);
+  // Push simulado: devolve 1 pessoa avisada, como se só uma tivesse aparelho inscrito
+  const notify = vi.fn(async (_userIds: string[], _message: unknown) => 1);
+  const service = createAdminService(
+    getAdmin,
+    createAccountService(getAdmin).deleteAccount,
+    () => ['edu@vamosjogar.test'],
+    createReminderService(getAdmin, notify).remindEventAsAppAdmin,
+  );
   const ids = {} as Record<Person, string>;
   const actor = (person: Person) => ({
     uid: ids[person],
@@ -36,6 +42,7 @@ describeIfPocketBase('Painel de admin', () => {
   });
 
   beforeEach(async () => {
+    notify.mockClear();
     await resetAppData(admin);
     for (const name of ['app_admins', 'admin_logs']) {
       for (const r of await admin.collection(name).getFullList({ fields: 'id' })) {
@@ -151,6 +158,62 @@ describeIfPocketBase('Painel de admin', () => {
       ['grupo_novo_admin', 'Sexta: BIA <bia@vamosjogar.test>'],
       ['membro_removido', 'Sexta: CAIO <caio@vamosjogar.test>'],
     ]);
+  });
+
+  it('lista só eventos em votação, com quem falta votar na etapa atual', async () => {
+    const dates = await admin
+      .collection('events')
+      .create({ group: groupId, creator: ids.bia, title: 'Data aberta', status: 'VOTING_DATE' });
+    await admin
+      .collection('events')
+      .create({ group: groupId, creator: ids.bia, title: 'Fechado', status: 'CONFIRMED' });
+    await admin.collection('votes').create({ event: dates.id, user: ids.bia, dateOptionId: 'd1' });
+
+    expect(await service.listOpenEvents()).toEqual([
+      {
+        id: dates.id,
+        title: 'Data aberta',
+        status: 'VOTING_DATE',
+        groupId,
+        groupName: 'Sexta',
+        pendingNames: ['ANA', 'CAIO'],
+        lastReminderSentAt: '',
+      },
+    ]);
+  });
+
+  it('cobra os pendentes de qualquer evento sem ser criador nem admin do grupo, e registra', async () => {
+    const event = await admin
+      .collection('events')
+      .create({ group: groupId, creator: ids.bia, title: 'Jogatina', status: 'VOTING_DATE' });
+    await admin.collection('votes').create({ event: event.id, user: ids.bia, dateOptionId: 'd1' });
+
+    const message = await service.remindEvent(actor('edu'), event.id);
+
+    expect(message).toBe(
+      'Notificação enviada para 1 de 2 pessoa(s) que ainda não votaram. Quem não ativou as notificações não recebe.',
+    );
+    const [userIds, pushed] = notify.mock.calls[0];
+    expect([...userIds].sort()).toEqual([ids.ana, ids.caio].sort());
+    expect(pushed).toMatchObject({ url: `/event/${groupId}/${event.id}` });
+    expect((await admin.collection('events').getOne(event.id)).lastReminderSentAt).not.toBe('');
+    expect((await service.listOpenEvents())[0].lastReminderSentAt).not.toBe('');
+    expect(await logActions()).toEqual([
+      ['edu@vamosjogar.test', 'cobranca_enviada', 'Sexta: Jogatina (1 de 2)'],
+    ]);
+  });
+
+  it('não cobra evento confirmado nem inexistente', async () => {
+    const closed = await admin
+      .collection('events')
+      .create({ group: groupId, creator: ids.bia, title: 'Fechado', status: 'CONFIRMED' });
+
+    await expect(service.remindEvent(actor('edu'), closed.id)).rejects.toThrow(/confirmado/);
+    await expect(service.remindEvent(actor('edu'), 'naoexiste12345')).rejects.toMatchObject({
+      status: 404,
+    });
+    expect(notify).not.toHaveBeenCalled();
+    expect(await logActions()).toEqual([]);
   });
 
   it('pelas regras, ninguém lê nem grava admins e registro direto no PocketBase', async () => {
