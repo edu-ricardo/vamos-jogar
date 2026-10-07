@@ -49,6 +49,12 @@
   }
 }
 
+.event-final-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .event-hint {
   margin: 6px 0 20px;
 }

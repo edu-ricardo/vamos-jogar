@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { getAdminClient } from '../lib/pocketbase';
 import { joinGroupByInvite } from '../services/groupInviteService';
+import { accountService } from '../services/accountService';
 
 const JOIN_ERRORS = {
   INVALID_INVITE: { status: 404, error: 'Convite inválido ou expirado.' },
@@ -24,5 +25,16 @@ export const joinGroup = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Erro ao entrar no grupo:', error);
     return res.status(500).json({ error: 'Erro interno ao processar o convite.' });
+  }
+};
+
+export const leaveGroup = async (req: Request, res: Response) => {
+  try {
+    const result = await accountService.leaveGroup((req as any).user.uid, String(req.params.id));
+    if (!result.ok) return res.status(404).json({ error: 'Você não é membro deste grupo.' });
+    return res.json({ success: true, groupDeleted: result.groupDeleted });
+  } catch (error) {
+    console.error('Erro ao sair do grupo:', error);
+    return res.status(500).json({ error: 'Erro interno ao sair do grupo.' });
   }
 };

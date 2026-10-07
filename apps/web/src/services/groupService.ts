@@ -26,6 +26,14 @@ export interface GroupRepository {
 export const groupService = {
   ...backend.groups,
 
+  // Sair passa pela API: ela passa a administração adiante ou apaga o grupo vazio
+  leaveGroup: (groupId: string, idToken: string) =>
+    apiRequest<{ groupDeleted: boolean }>(`/api/groups/${groupId}/leave`, {
+      method: 'POST',
+      idToken,
+      fallbackError: 'Erro ao sair do grupo.',
+    }),
+
   // Entrar por convite passa pela API, que valida o token e adiciona o membro
   joinGroup: (inviteToken: string, idToken: string) =>
     apiRequest<{ groupId: string; groupName: string }>('/api/groups/join', {

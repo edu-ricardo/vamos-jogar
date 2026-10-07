@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { ludotecaService, getGameSource, type Game } from '../services/ludotecaService';
 import { filterCollection } from '../services/ludotecaFilters';
 import { Modal } from '../components/Modal';
+import { GameFilters, emptyGameFilters, toCollectionFilters } from '../components/GameFilters';
 import toast from 'react-hot-toast';
 import './Ludoteca.scss';
 
@@ -38,9 +39,7 @@ export const Ludoteca = () => {
   const [expSearchLoading, setExpSearchLoading] = useState(false);
 
   // Filtros da coleção
-  const [filterText, setFilterText] = useState('');
-  const [filterPlayers, setFilterPlayers] = useState('');
-  const [filterPlaytime, setFilterPlaytime] = useState('');
+  const [filters, setFilters] = useState(emptyGameFilters);
 
   const loadCollection = async () => {
     if (!user) return;
@@ -209,11 +208,7 @@ export const Ludoteca = () => {
     }
   };
 
-  const filteredCollection = filterCollection(myCollection, {
-    text: filterText,
-    players: Number(filterPlayers) || undefined,
-    maxPlaytime: Number(filterPlaytime) || undefined,
-  });
+  const filteredCollection = filterCollection(myCollection, toCollectionFilters(filters));
 
   const gameFields = (
     <div className="ludoteca-fields">
@@ -318,38 +313,7 @@ export const Ludoteca = () => {
                 : `${filteredCollection.length} de ${myCollection.length}`}
               )
             </h2>
-            <div className="ludoteca-filters">
-              <input
-                type="search"
-                placeholder="Filtrar por nome..."
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                aria-label="Filtrar por nome"
-              />
-              <select
-                value={filterPlayers}
-                onChange={(e) => setFilterPlayers(e.target.value)}
-                aria-label="Jogadores"
-              >
-                <option value="">Qualquer nº de jogadores</option>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                  <option key={n} value={n}>
-                    {n} {n === 1 ? 'jogador' : 'jogadores'}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={filterPlaytime}
-                onChange={(e) => setFilterPlaytime(e.target.value)}
-                aria-label="Duração"
-              >
-                <option value="">Qualquer duração</option>
-                <option value="30">Até 30 min</option>
-                <option value="60">Até 1 hora</option>
-                <option value="90">Até 1h30</option>
-                <option value="120">Até 2 horas</option>
-              </select>
-            </div>
+            <GameFilters values={filters} onChange={setFilters} withText />
           </div>
 
           {myCollection.length === 0 ? (

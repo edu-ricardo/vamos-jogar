@@ -8,6 +8,7 @@ import { renderPage } from '../test/renderPage';
 import { eventService } from '../services/eventService';
 import { groupService } from '../services/groupService';
 import { ludotecaService } from '../services/ludotecaService';
+import { downloadIcs } from '../services/calendarFile';
 import { EventDetails } from './EventDetails';
 
 vi.mock('../context/AuthContext', async () => (await import('../test/auth')).authModuleMock);
@@ -22,6 +23,7 @@ vi.mock('../services/eventService', () => ({
     confirmEvent: vi.fn(),
     deleteEvent: vi.fn(),
     forceReminders: vi.fn(),
+    suggestGames: vi.fn(),
   },
 }));
 vi.mock('../services/groupService', () => ({
@@ -29,6 +31,10 @@ vi.mock('../services/groupService', () => ({
 }));
 vi.mock('../services/ludotecaService', () => ({
   ludotecaService: { fetchUserCollection: vi.fn() },
+}));
+vi.mock('../services/calendarFile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/calendarFile')>()),
+  downloadIcs: vi.fn(),
 }));
 
 const members = [
@@ -250,5 +256,106 @@ describe('Evento — votação de jogos e confirmado', () => {
     expect(screen.queryByText('Catan')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Confirmar votos' })).toBeNull();
     expect(screen.queryByRole('button', { name: /Cobrar quem não votou/ })).toBeNull();
+  });
+});
+
+describe('Evento — sugerir jogos da ludoteca', () => {
+  const game = (id: string, name: string, playtime: string, min: number, max: number) => ({
+    id,
+    sourceId: id,
+    name,
+    image: '',
+    playtime,
+    minPlayers: min,
+    maxPlayers: max,
+  });
+
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchGroupMembers).mockResolvedValue(members);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    vi.mocked(ludotecaService.fetchUserCollection).mockResolvedValue([
+      game('1', 'Catan', '60', 3, 4),
+      game('2', 'Azul', '45', 2, 4),
+      game('3', '7 Wonders Duel', '30', 2, 2),
+    ] as never);
+  });
+
+  const openSuggest = async () => {
+    const user = userEvent.setup();
+    await open(gamesEvent({ gameOptions: [], votesGames: {} }));
+    await user.click(screen.getByRole('button', { name: '+ Sugerir jogos' }));
+    const dialog = within(await screen.findByRole('dialog'));
+    await dialog.findByText('Catan');
+    return { user, dialog };
+  };
+
+  it('mostra a duração e os jogadores de cada jogo', async () => {
+    const { dialog } = await openSuggest();
+
+    expect(dialog.getByText('⏱ 60 min · 👥 3-4')).toBeTruthy();
+    expect(dialog.getByText('⏱ 30 min · 👥 2')).toBeTruthy();
+  });
+
+  it('filtra pelo número de jogadores e pela duração', async () => {
+    const { user, dialog } = await openSuggest();
+
+    await user.selectOptions(dialog.getByLabelText('Jogadores'), '2');
+    expect(dialog.queryByText('Catan')).toBeNull();
+
+    await user.selectOptions(dialog.getByLabelText('Duração'), '30');
+    expect(dialog.queryByText('Azul')).toBeNull();
+    expect(dialog.getByText('7 Wonders Duel')).toBeTruthy();
+
+    await user.selectOptions(dialog.getByLabelText('Jogadores'), '8');
+    expect(dialog.getByText('Nenhum jogo da sua ludoteca combina com os filtros.')).toBeTruthy();
+  });
+
+  it('"Selecionar os filtrados" marca só o que está na lista e envia esses jogos', async () => {
+    const { user, dialog } = await openSuggest();
+
+    await user.selectOptions(dialog.getByLabelText('Jogadores'), '2');
+    await user.click(dialog.getByRole('button', { name: 'Selecionar os filtrados' }));
+    await user.click(dialog.getByRole('button', { name: 'Enviar para a mesa' }));
+
+    expect(eventService.suggestGames).toHaveBeenCalledWith(
+      'g1',
+      'e1',
+      expect.arrayContaining([
+        expect.objectContaining({ id: '2', name: 'Azul', suggesterId: 'u-edu' }),
+        expect.objectContaining({ id: '3', name: '7 Wonders Duel' }),
+      ]),
+    );
+    expect(vi.mocked(eventService.suggestGames).mock.calls[0][2]).toHaveLength(2);
+  });
+});
+
+describe('Evento — adicionar ao calendário', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchGroupMembers).mockResolvedValue(members);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+  });
+
+  it('com a data definida, baixa o arquivo do calendário com data, hora e local do evento', async () => {
+    const user = userEvent.setup();
+    await open(gamesEvent());
+
+    await user.click(screen.getByRole('button', { name: /Adicionar ao calendário/ }));
+
+    expect(downloadIcs).toHaveBeenCalledTimes(1);
+    const [filename, content] = vi.mocked(downloadIcs).mock.calls[0];
+    expect(filename).toBe('jogatina.ics');
+    expect(content).toContain('DTSTART:20261011T140000');
+    expect(content).toContain('SUMMARY:Jogatina: Jogatina de aniversário (Sexta)');
+    // No arquivo, a vírgula do texto leva uma barra na frente
+    expect(content).toContain(String.raw`LOCATION:Casa do Edu\, Rua das Flores\, 100`);
+  });
+
+  it('enquanto a data não foi definida não há botão de calendário', async () => {
+    await open(dateEvent());
+    expect(screen.queryByRole('button', { name: /Adicionar ao calendário/ })).toBeNull();
   });
 });

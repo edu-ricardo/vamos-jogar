@@ -14,6 +14,7 @@ Legenda de esforço: **P** (horas), **M** (um dia), **G** (vários dias). ✅ fe
 | 2.1.0  | Lembretes de voto por notificação (Web Push) com agendador interno                                                  |
 | 2.2.0  | Versão desktop: menu lateral, tema claro/escuro, páginas em colunas, filtros da ludoteca, contagem de votos ao vivo |
 | 2.3.0  | Painel de administração (usuários, senha temporária, grupos, registro) e troca de senha                             |
+| 2.4.0  | Aba Eventos no painel (cobrar votos), testes de tela e guia de backup                                               |
 
 ---
 
@@ -34,17 +35,17 @@ Legenda de esforço: **P** (horas), **M** (um dia), **G** (vários dias). ✅ fe
 Ordem pensada para entregar valor cedo e deixar o que mexe no banco por último. Decisão: **fora do
 escopo** por enquanto — renovar/invalidar link de convite do grupo e comentários no evento.
 
-| #   | Item                                                                                                                    | Esforço | Depende de                      | Notas                                                                                              |
-| --- | ----------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------- | -------------------------------------------------------------------------------------------------- |
-| 2.1 | **Sair do grupo** (membro sai sozinho; se for admin, passa ao membro mais antigo; votos abertos saem)                   | P       | —                               | Reaproveita `planGroupDeparture` da exclusão de conta                                              |
-| 2.2 | **Sugestão de jogos que cabem na mesa**: filtro por jogadores e duração ao sugerir                                      | P       | —                               | Reaproveita `filterCollection`; só tela                                                            |
-| 2.3 | **Adicionar ao calendário** (arquivo `.ics`) no evento confirmado e na tela inicial                                     | P       | —                               | Gerado no navegador, sem servidor                                                                  |
-| 2.4 | **Mais notificações**: evento novo, data definida, jogatina confirmada e lembrete na véspera, com preferências em Conta | M       | —                               | Migração (preferências por pessoa); reaproveita o Web Push                                         |
-| 2.5 | **Confirmação de presença** ("vou / não vou / talvez") depois que o evento é confirmado                                 | M       | 2.4 (avisar quem não respondeu) | Coleção nova; mostra quem vem e quantos jogadores cabem                                            |
-| 2.6 | **Votação mais flexível**: votar em várias datas, acrescentar data depois, destacar a opção líder e o empate            | G       | —                               | Muda o modelo de voto (hoje 1 data e 1 local por pessoa); precisa de migração dos votos existentes |
-| 2.7 | **Ludoteca**: ordenação, cadastro manual de jogo (quando a Ludopedia/BGG não achar) e "quem tem o jogo X" no grupo      | M       | —                               | O "quem tem" é uma consulta no grupo                                                               |
-| 2.8 | **Histórico do grupo**: eventos passados e jogos que foram para a mesa (mais jogados)                                   | M       | —                               | Só leitura sobre dados que já existem                                                              |
-| 2.9 | **Votação por ranking de jogos** (em vez de só marcar)                                                                  | G       | 2.6                             | Mais ambicioso; avaliar depois de usar a 2.6                                                       |
+| #      | Item                                                                                                                    | Esforço | Depende de                      | Notas                                                                                               |
+| ------ | ----------------------------------------------------------------------------------------------------------------------- | ------- | ------------------------------- | --------------------------------------------------------------------------------------------------- |
+| 2.1 ✅ | **Sair do grupo** (membro sai sozinho; se for admin, passa ao membro mais antigo; votos abertos saem)                   | P       | —                               | Reaproveita `planGroupDeparture` da exclusão de conta; o último membro apaga o grupo (a tela avisa) |
+| 2.2 ✅ | **Sugestão de jogos que cabem na mesa**: filtro por jogadores e duração ao sugerir                                      | P       | —                               | Reaproveita `filterCollection`; mesmo componente de filtros da Ludoteca                             |
+| 2.3 ✅ | **Adicionar ao calendário** (arquivo `.ics`) na página do evento, assim que a data é definida                           | P       | —                               | Gerado no navegador, sem servidor. Na tela inicial ficou o link do Google Agenda que já existia     |
+| 2.4    | **Mais notificações**: evento novo, data definida, jogatina confirmada e lembrete na véspera, com preferências em Conta | M       | —                               | Migração (preferências por pessoa); reaproveita o Web Push                                          |
+| 2.5    | **Confirmação de presença** ("vou / não vou / talvez") depois que o evento é confirmado                                 | M       | 2.4 (avisar quem não respondeu) | Coleção nova; mostra quem vem e quantos jogadores cabem                                             |
+| 2.6    | **Votação mais flexível**: votar em várias datas, acrescentar data depois, destacar a opção líder e o empate            | G       | —                               | Muda o modelo de voto (hoje 1 data e 1 local por pessoa); precisa de migração dos votos existentes  |
+| 2.7    | **Ludoteca**: ordenação, cadastro manual de jogo (quando a Ludopedia/BGG não achar) e "quem tem o jogo X" no grupo      | M       | —                               | O "quem tem" é uma consulta no grupo                                                                |
+| 2.8    | **Histórico do grupo**: eventos passados e jogos que foram para a mesa (mais jogados)                                   | M       | —                               | Só leitura sobre dados que já existem                                                               |
+| 2.9    | **Votação por ranking de jogos** (em vez de só marcar)                                                                  | G       | 2.6                             | Mais ambicioso; avaliar depois de usar a 2.6                                                        |
 
 ## Fase 3 — Visual (versões 2.6.x)
 

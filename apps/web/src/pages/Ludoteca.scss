@@ -77,30 +77,6 @@
   margin-bottom: 16px;
 }
 
-.ludoteca-filters {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  width: 100%;
-
-  input {
-    grid-column: 1 / -1;
-  }
-
-  @media (min-width: $desktop) {
-    display: flex;
-    width: auto;
-
-    input {
-      width: 200px;
-    }
-
-    select {
-      width: auto;
-    }
-  }
-}
-
 .ludoteca-grid {
   list-style: none;
   display: grid;

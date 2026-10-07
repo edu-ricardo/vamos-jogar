@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { eventService, type Event, type FavoriteLocation } from '../services/eventService';
 import { EVENT_STATUS_LABEL } from '../services/eventResults';
@@ -13,6 +13,9 @@ import './GroupDetails.scss';
 export const GroupDetails = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+
+  const navigate = useNavigate();
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
 
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +78,17 @@ export const GroupDetails = () => {
       loadGroupData();
     } catch (err) {
       toast.error('Erro ao remover membro.');
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!id || !user) return;
+    try {
+      const { groupDeleted } = await groupService.leaveGroup(id, await user.getIdToken());
+      toast.success(groupDeleted ? 'Você saiu e o grupo foi apagado.' : 'Você saiu do grupo.');
+      navigate('/grupos');
+    } catch (err) {
+      toast.error((err as Error).message || 'Erro ao sair do grupo.');
     }
   };
 
@@ -190,8 +204,38 @@ export const GroupDetails = () => {
               </li>
             ))}
           </ul>
+          <button onClick={() => setShowLeaveModal(true)} className="btn-link group-leave">
+            Sair do grupo
+          </button>
         </aside>
       </div>
+
+      {showLeaveModal && (
+        <Modal
+          title="Sair do grupo?"
+          size="sm"
+          onClose={() => setShowLeaveModal(false)}
+          footer={
+            <>
+              <button onClick={() => setShowLeaveModal(false)} className="btn-secondary">
+                Cancelar
+              </button>
+              <button onClick={handleLeaveGroup} className="btn-danger">
+                Sim, sair
+              </button>
+            </>
+          }
+        >
+          <p className="muted">
+            {members.length <= 1
+              ? 'Você é o único membro: o grupo e todos os eventos dele serão apagados.'
+              : isAdmin
+                ? 'Você é o admin: a administração passa ao membro mais antigo do grupo.'
+                : 'Seus votos e sugestões nos eventos em aberto são removidos.'}{' '}
+            Para voltar, será preciso um novo convite.
+          </p>
+        </Modal>
+      )}
 
       {showModal && (
         <EventFormModal

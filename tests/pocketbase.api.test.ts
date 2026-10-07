@@ -251,4 +251,73 @@ describeIfPocketBase('Serviços da API no PocketBase', () => {
       });
     });
   });
+
+  describe('sair do grupo', () => {
+    const accounts = () => createAccountService(getAdmin);
+
+    it('membro comum sai: perde só os votos e sugestões dos eventos abertos; o admin continua', async () => {
+      const open = await admin
+        .collection('events')
+        .create({ group: groupId, creator: ids.ana, title: 'Aberto', status: 'VOTING_GAMES' });
+      const closed = await admin
+        .collection('events')
+        .create({ group: groupId, creator: ids.ana, title: 'Fechado', status: 'CONFIRMED' });
+      for (const event of [open, closed]) {
+        await admin.collection('votes').create({ event: event.id, user: ids.bia, gameIds: ['x'] });
+      }
+
+      expect(await accounts().leaveGroup(ids.bia, groupId)).toEqual({
+        ok: true,
+        groupDeleted: false,
+      });
+
+      expect(await membersOf(groupId)).toEqual([ids.ana, ids.caio]);
+      expect((await admin.collection('groups').getOne(groupId)).admin).toBe(ids.ana);
+      expect(
+        await admin.collection('votes').getFullList({ filter: `event = "${open.id}"` }),
+      ).toEqual([]);
+      expect(
+        await admin.collection('votes').getFullList({ filter: `event = "${closed.id}"` }),
+      ).toHaveLength(1);
+      // A conta continua existindo
+      expect((await admin.collection('users').getOne(ids.bia)).id).toBe(ids.bia);
+    });
+
+    it('admin sai: o membro mais antigo restante herda o grupo', async () => {
+      await accounts().leaveGroup(ids.ana, groupId);
+
+      expect((await admin.collection('groups').getOne(groupId)).admin).toBe(ids.bia);
+      expect(await membersOf(groupId)).toEqual([ids.bia, ids.caio]);
+    });
+
+    it('o último membro sai: o grupo é apagado com os eventos', async () => {
+      const solo = await admin
+        .collection('groups')
+        .create({ name: 'Só eu', admin: ids.duda, inviteToken: 'convite-solo' });
+      await admin.collection('memberships').create({ group: solo.id, user: ids.duda });
+      await admin
+        .collection('events')
+        .create({ group: solo.id, creator: ids.duda, title: 'Solo', status: 'VOTING_DATE' });
+
+      expect(await accounts().leaveGroup(ids.duda, solo.id)).toEqual({
+        ok: true,
+        groupDeleted: true,
+      });
+
+      await expect(admin.collection('groups').getOne(solo.id)).rejects.toMatchObject({
+        status: 404,
+      });
+      expect(
+        await admin.collection('events').getFullList({ filter: `group = "${solo.id}"` }),
+      ).toEqual([]);
+    });
+
+    it('quem não é membro não consegue sair (nem mexer no grupo dos outros)', async () => {
+      expect(await accounts().leaveGroup(ids.duda, groupId)).toEqual({
+        ok: false,
+        reason: 'NOT_MEMBER',
+      });
+      expect(await membersOf(groupId)).toEqual([ids.ana, ids.bia, ids.caio]);
+    });
+  });
 });

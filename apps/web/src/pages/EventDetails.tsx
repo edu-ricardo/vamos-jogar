@@ -16,6 +16,9 @@ import {
   rankGameOptions,
 } from '../services/eventResults';
 import { Modal } from '../components/Modal';
+import { GameFilters, emptyGameFilters, toCollectionFilters } from '../components/GameFilters';
+import { filterCollection } from '../services/ludotecaFilters';
+import { buildIcs, downloadIcs } from '../services/calendarFile';
 import { EventFormModal, type EventFormValues } from '../components/EventFormModal';
 import toast from 'react-hot-toast';
 import './EventDetails.scss';
@@ -43,6 +46,7 @@ export const EventDetails = () => {
 
   const [event, setEvent] = useState<Event | null>(null);
   const [groupAdminId, setGroupAdminId] = useState('');
+  const [groupName, setGroupName] = useState('');
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -62,6 +66,7 @@ export const EventDetails = () => {
   const [myGames, setMyGames] = useState<Game[]>([]);
   const [loadingMyGames, setLoadingMyGames] = useState(false);
   const [selectedGamesToSuggest, setSelectedGamesToSuggest] = useState<string[]>([]);
+  const [suggestFilters, setSuggestFilters] = useState(emptyGameFilters);
 
   // Votos em jogos
   const [selectedGamesToVote, setSelectedGamesToVote] = useState<string[]>([]);
@@ -80,6 +85,7 @@ export const EventDetails = () => {
       ]);
       setEvent(fetched);
       setGroupAdminId(group?.adminId || '');
+      setGroupName(group?.name || '');
       setMembers(groupMembers);
 
       if (user) {
@@ -196,6 +202,7 @@ export const EventDetails = () => {
       const myCollection = await ludotecaService.fetchUserCollection(user.uid);
       setMyGames(myCollection);
       setSelectedGamesToSuggest([]);
+      setSuggestFilters(emptyGameFilters);
     } catch (err) {
       toast.error('Erro ao buscar ludoteca');
     } finally {
@@ -293,6 +300,22 @@ export const EventDetails = () => {
     return report;
   };
 
+  const addToCalendar = () => {
+    if (!event || !finalDate || !finalLocation) return;
+    const ics = buildIcs({
+      id: event.id ?? '',
+      title: event.title,
+      groupName,
+      date: finalDate.date,
+      startTime: finalDate.startTime,
+      endTime: finalDate.endTime,
+      locationName: finalLocation.name,
+      address: finalLocation.address,
+      url: window.location.href,
+    });
+    downloadIcs('jogatina.ics', ics);
+  };
+
   const copyResults = () => {
     navigator.clipboard.writeText(getResultsReport());
     toast.success('Resultados copiados para a área de transferência!');
@@ -342,6 +365,8 @@ export const EventDetails = () => {
   const toggle = (list: string[], id: string, checked: boolean) =>
     checked ? [...list, id] : list.filter((item) => item !== id);
 
+  const suggestableGames = filterCollection(myGames, toCollectionFilters(suggestFilters));
+
   if (loading) return <p className="empty-state">Carregando evento...</p>;
   if (!event) return null;
 
@@ -385,14 +410,19 @@ export const EventDetails = () => {
                   {finalLocation.name} ({finalLocation.address})
                 </span>
               </div>
-              <a
-                href={mapsUrl(finalLocation.address)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-secondary btn-sm"
-              >
-                📍 Abrir no mapa
-              </a>
+              <div className="event-final-actions">
+                <button onClick={addToCalendar} className="btn-secondary btn-sm">
+                  📅 Adicionar ao calendário
+                </button>
+                <a
+                  href={mapsUrl(finalLocation.address)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary btn-sm"
+                >
+                  📍 Abrir no mapa
+                </a>
+              </div>
             </section>
           )}
 
@@ -713,15 +743,26 @@ export const EventDetails = () => {
             <p className="empty-state">Sua ludoteca está vazia. Adicione jogos primeiro!</p>
           ) : (
             <>
+              <p className="muted event-hint">
+                Filtre pelo número de pessoas e pela duração para ver só o que cabe na mesa.
+              </p>
+              <GameFilters values={suggestFilters} onChange={setSuggestFilters} />
               <button
                 type="button"
-                onClick={() => setSelectedGamesToSuggest(myGames.map((g) => g.id))}
+                onClick={() =>
+                  setSelectedGamesToSuggest([
+                    ...new Set([...selectedGamesToSuggest, ...suggestableGames.map((g) => g.id)]),
+                  ])
+                }
                 className="btn-link event-select-all"
               >
-                Selecionar todos
+                Selecionar {suggestableGames.length === myGames.length ? 'todos' : 'os filtrados'}
               </button>
+              {suggestableGames.length === 0 && (
+                <p className="empty-state">Nenhum jogo da sua ludoteca combina com os filtros.</p>
+              )}
               <div className="event-options">
-                {myGames.map((g) => (
+                {suggestableGames.map((g) => (
                   <label
                     key={g.id}
                     className={`event-option${selectedGamesToSuggest.includes(g.id) ? ' selected' : ''}`}
@@ -740,7 +781,18 @@ export const EventDetails = () => {
                     ) : (
                       <div className="event-game-thumb" />
                     )}
-                    <strong className="event-option-info">{g.name}</strong>
+                    <div className="event-option-info">
+                      <strong>{g.name}</strong>
+                      <span className="muted">
+                        {[
+                          g.playtime && `⏱ ${g.playtime} min`,
+                          (g.minPlayers || g.maxPlayers) &&
+                            `👥 ${g.minPlayers || '?'}${g.maxPlayers && g.maxPlayers !== g.minPlayers ? `-${g.maxPlayers}` : ''}`,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </span>
+                    </div>
                   </label>
                 ))}
               </div>
