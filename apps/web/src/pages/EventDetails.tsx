@@ -16,8 +16,10 @@ import {
   EVENT_STATUS_LABEL,
   countChoices,
   countDateVotes,
+  countGamePoints,
   countGameVotes,
   findLeaders,
+  moveGameVote,
   rankGameOptions,
 } from '../services/eventResults';
 import { Modal } from '../components/Modal';
@@ -46,9 +48,17 @@ const RSVP_GROUPS: { status: AttendanceStatus | null; label: string }[] = [
 const mapsUrl = (address: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
-// Quantos votos a opção tem, com a barra proporcional ao total de quem já votou
-const VoteBar = ({ votes, total }: { votes: number; total: number }) => (
-  <div className="vote-bar" title={`${votes} voto(s)`}>
+// Quanto a opção tem (votos ou pontos), com a barra proporcional ao total (ou ao maior valor)
+const VoteBar = ({
+  votes,
+  total,
+  unit = 'voto(s)',
+}: {
+  votes: number;
+  total: number;
+  unit?: string;
+}) => (
+  <div className="vote-bar" title={`${votes} ${unit}`}>
     <div className="vote-bar-track">
       <div
         className="vote-bar-fill"
@@ -132,8 +142,14 @@ export const EventDetails = () => {
         }
         if (fetched.votesLocation && fetched.votesLocation[user.uid])
           setSelectedLocation(fetched.votesLocation[user.uid]);
-        if (fetched.votesGames && fetched.votesGames[user.uid])
-          setSelectedGamesToVote(fetched.votesGames[user.uid]);
+        if (fetched.votesGames && fetched.votesGames[user.uid]) {
+          // A ordem do voto é a preferência da pessoa; descarta jogos que não estão mais na lista
+          setSelectedGamesToVote(
+            fetched.votesGames[user.uid].filter((id) =>
+              (fetched.gameOptions ?? []).some((g) => g.id === id),
+            ),
+          );
+        }
 
         const favs = await eventService.fetchFavoriteLocations(user.uid);
         setFavorites(favs);
@@ -366,8 +382,8 @@ export const EventDetails = () => {
     // Jogos (se fase 5)
     if (event.gameOptions && event.gameOptions.length > 0) {
       report += '\n*🧩 Jogos:*\n';
-      rankGameOptions(event.gameOptions, event.votesGames).forEach(({ game, votes }) => {
-        report += `- ${game.name}: ${votes} voto(s)\n`;
+      rankGameOptions(event.gameOptions, event.votesGames).forEach(({ game, votes, points }) => {
+        report += `- ${game.name}: ${points} pt(s) (${votes} voto(s))\n`;
       });
     }
 
@@ -470,6 +486,10 @@ export const EventDetails = () => {
       <span className="chip event-leader">{leaders.length > 1 ? 'Empate' : 'Líder'}</span>
     ) : null;
   const gameVotes = countGameVotes(event.votesGames);
+  const gameIds = (event.gameOptions ?? []).map((g) => g.id);
+  const gamePoints = countGamePoints(gameIds, event.votesGames);
+  const maxGamePoints = Math.max(0, ...Object.values(gamePoints));
+  const gameLeaders = findLeaders(gameIds, gamePoints);
   // Quem já votou na etapa atual (no evento confirmado não há mais votação)
   const phaseVotes = event.status === 'VOTING_GAMES' ? event.votesGames || {} : event.votesDate;
   const voterCount = Object.keys(phaseVotes).length;
@@ -626,7 +646,8 @@ export const EventDetails = () => {
                 </button>
               </div>
               <p className="muted event-hint">
-                Vote nos jogos que você quer que estejam na mesa. Pode votar em quantos quiser!
+                Marque os jogos que você quer na mesa e ordene do mais ao menos desejado: o 1º vale
+                mais pontos.
               </p>
 
               {!event.gameOptions || event.gameOptions.length === 0 ? (
@@ -656,13 +677,58 @@ export const EventDetails = () => {
                           <div className="event-game-thumb" />
                         )}
                         <div className="event-option-info">
-                          <strong>{g.name}</strong>
-                          <span className="muted">Sugerido por {g.suggesterName}</span>
+                          <strong>
+                            {g.name}
+                            {leaderChip(gameLeaders, g.id)}
+                          </strong>
+                          <span className="muted">
+                            Sugerido por {g.suggesterName} · {gameVotes[g.id] || 0} voto(s)
+                          </span>
                         </div>
-                        <VoteBar votes={gameVotes[g.id] || 0} total={voterCount} />
+                        <VoteBar votes={gamePoints[g.id] || 0} total={maxGamePoints} unit="pt(s)" />
                       </label>
                     ))}
                   </div>
+
+                  {selectedGamesToVote.length > 0 && (
+                    <div className="event-ranking">
+                      <h3 className="event-subtitle">Sua ordem de preferência</h3>
+                      <ol>
+                        {selectedGamesToVote.map((id, index) => {
+                          const game = event.gameOptions?.find((g) => g.id === id);
+                          if (!game) return null;
+                          return (
+                            <li key={id}>
+                              <span className="event-ranking-position">{index + 1}º</span>
+                              <span className="event-ranking-name">{game.name}</span>
+                              <button
+                                type="button"
+                                className="btn-secondary btn-sm"
+                                aria-label={`Subir ${game.name}`}
+                                disabled={index === 0}
+                                onClick={() =>
+                                  setSelectedGamesToVote(moveGameVote(selectedGamesToVote, id, -1))
+                                }
+                              >
+                                ↑
+                              </button>
+                              <button
+                                type="button"
+                                className="btn-secondary btn-sm"
+                                aria-label={`Descer ${game.name}`}
+                                disabled={index === selectedGamesToVote.length - 1}
+                                onClick={() =>
+                                  setSelectedGamesToVote(moveGameVote(selectedGamesToVote, id, 1))
+                                }
+                              >
+                                ↓
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  )}
 
                   <button
                     onClick={handleVoteGames}
@@ -999,7 +1065,7 @@ export const EventDetails = () => {
             Marque os jogos que vão para a mesa. Depois de confirmar, ninguém mais vota.
           </p>
           <div className="event-options">
-            {rankGameOptions(event.gameOptions, event.votesGames).map(({ game, votes }) => (
+            {rankGameOptions(event.gameOptions, event.votesGames).map(({ game, votes, points }) => (
               <label
                 key={game.id}
                 className={`event-option${finalGameSelection.includes(game.id) ? ' selected' : ''}`}
@@ -1012,7 +1078,9 @@ export const EventDetails = () => {
                   }
                 />
                 <strong className="event-option-info">{game.name}</strong>
-                <span className="muted">{votes} voto(s)</span>
+                <span className="muted">
+                  {points} pt(s) · {votes} voto(s)
+                </span>
               </label>
             ))}
           </div>

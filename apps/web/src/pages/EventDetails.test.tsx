@@ -325,10 +325,11 @@ describe('Evento — votação de jogos e confirmado', () => {
 
     expect(screen.getByText('11/10/2026 às 14:00')).toBeTruthy();
     expect(screen.getByText(/Casa do Edu \(Rua das Flores, 100\)/)).toBeTruthy();
-    expect(screen.getByText('Sugerido por Bia')).toBeTruthy();
-    // Catan: 2 votos, Azul: 1 voto
-    expect(screen.getByTitle('2 voto(s)')).toBeTruthy();
-    expect(screen.getByTitle('1 voto(s)')).toBeTruthy();
+    // Catan: 2 votos e 4 pontos (1º de Bia e de Caio); Azul: 1 voto e 1 ponto (2º de Caio)
+    expect(screen.getByTitle('4 pt(s)')).toBeTruthy();
+    expect(screen.getByTitle('1 pt(s)')).toBeTruthy();
+    expect(screen.getByText('Sugerido por Edu · 2 voto(s)')).toBeTruthy();
+    expect(screen.getByText('Sugerido por Bia · 1 voto(s)')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Votaram 2 de 3' })).toBeTruthy();
   });
 
@@ -618,5 +619,141 @@ describe('Evento — avisos ao grupo', () => {
 
     expect(toast.success).toHaveBeenCalledWith('Jogatina confirmada!');
     expect(toast.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('Evento — ranking de jogos', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchGroupMembers).mockResolvedValue(members);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    vi.mocked(eventService.getAttendance).mockResolvedValue([]);
+    vi.mocked(eventService.voteGames).mockResolvedValue(undefined);
+  });
+
+  const panel = () =>
+    within(screen.getByRole('heading', { name: 'Sua ordem de preferência' }).parentElement!);
+  const order = () =>
+    panel()
+      .getAllByRole('listitem')
+      .map((li) => li.textContent);
+
+  it('sem nenhum jogo marcado não há ordem a fazer', async () => {
+    await open(gamesEvent({ votesGames: {} }));
+
+    expect(screen.queryByRole('heading', { name: 'Sua ordem de preferência' })).toBeNull();
+  });
+
+  it('os jogos marcados entram na ordem em que foram marcados, e desmarcar tira da ordem', async () => {
+    const user = userEvent.setup();
+    await open(gamesEvent({ votesGames: {} }));
+
+    await user.click(screen.getByLabelText(/Azul/));
+    await user.click(screen.getByLabelText(/Catan/));
+    expect(order()).toEqual(['1ºAzul↑↓', '2ºCatan↑↓']);
+
+    await user.click(screen.getByRole('checkbox', { name: /Azul/ }));
+    expect(order()).toEqual(['1ºCatan↑↓']);
+  });
+
+  it('subir e descer muda a ordem e é o que vai no voto', async () => {
+    const user = userEvent.setup();
+    await open(gamesEvent({ votesGames: {} }));
+    await user.click(screen.getByLabelText(/Azul/));
+    await user.click(screen.getByLabelText(/Catan/));
+
+    await user.click(screen.getByRole('button', { name: 'Subir Catan' }));
+    expect(order()).toEqual(['1ºCatan↑↓', '2ºAzul↑↓']);
+    await user.click(screen.getByRole('button', { name: 'Descer Catan' }));
+    expect(order()).toEqual(['1ºAzul↑↓', '2ºCatan↑↓']);
+    await user.click(screen.getByRole('button', { name: 'Subir Catan' }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar votos' }));
+
+    expect(eventService.voteGames).toHaveBeenCalledWith('g1', 'e1', 'u-edu', ['g-catan', 'g-azul']);
+  });
+
+  it('o primeiro não sobe e o último não desce', async () => {
+    const user = userEvent.setup();
+    await open(gamesEvent({ votesGames: {} }));
+    await user.click(screen.getByLabelText(/Azul/));
+    await user.click(screen.getByLabelText(/Catan/));
+
+    expect((screen.getByRole('button', { name: 'Subir Azul' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect(
+      (screen.getByRole('button', { name: 'Descer Catan' }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+  });
+
+  it('quem já votou vê a própria ordem de volta', async () => {
+    await open(gamesEvent({ votesGames: { 'u-edu': ['g-azul', 'g-catan'] } }));
+
+    expect(order()).toEqual(['1ºAzul↑↓', '2ºCatan↑↓']);
+  });
+
+  it('jogo que deixou de existir sai da ordem e do voto', async () => {
+    const user = userEvent.setup();
+    await open(gamesEvent({ votesGames: { 'u-edu': ['removido', 'g-catan'] } }));
+
+    expect(order()).toEqual(['1ºCatan↑↓']);
+    await user.click(screen.getByRole('button', { name: 'Confirmar votos' }));
+    expect(vi.mocked(eventService.voteGames).mock.calls[0][3]).toEqual(['g-catan']);
+  });
+
+  it('mostra os pontos de cada jogo e destaca o líder', async () => {
+    await open(
+      gamesEvent({
+        votesGames: { 'u-bia': ['g-azul', 'g-catan'], 'u-caio': ['g-azul'] },
+      }),
+    );
+
+    // Azul: 2 + 2 = 4 pontos; Catan: 1 ponto
+    expect(screen.getByTitle('4 pt(s)')).toBeTruthy();
+    expect(screen.getByTitle('1 pt(s)')).toBeTruthy();
+    const azul = screen.getByLabelText(/Azul/).closest('label')!;
+    expect(within(azul).getByText('Líder')).toBeTruthy();
+  });
+
+  it('um jogo marcado por todos, mas em último, pode empatar em pontos com o favorito de poucos', async () => {
+    await open(
+      gamesEvent({
+        votesGames: {
+          'u-bia': ['g-azul', 'g-catan'],
+          'u-caio': ['g-azul', 'g-catan'],
+          'u-edu': ['g-catan'],
+        },
+      }),
+    );
+
+    // Catan: 3 votos, mas 1 + 1 + 2 = 4 pontos; Azul: 2 votos, 2 + 2 = 4 pontos: empate
+    expect(screen.getAllByText('Empate')).toHaveLength(2);
+  });
+
+  it('a janela de encerramento mostra pontos e votos, com os votados marcados', async () => {
+    const user = userEvent.setup();
+    await open(gamesEvent({ votesGames: { 'u-bia': ['g-catan'] } }));
+
+    await user.click(screen.getByRole('button', { name: /Encerrar votação de jogos/ }));
+    const dialog = within(screen.getByRole('dialog'));
+
+    expect(dialog.getByText('2 pt(s) · 1 voto(s)')).toBeTruthy();
+    expect(dialog.getByText('0 pt(s) · 0 voto(s)')).toBeTruthy();
+    expect((dialog.getByLabelText(/Catan/) as HTMLInputElement).checked).toBe(true);
+    expect((dialog.getByLabelText(/Azul/) as HTMLInputElement).checked).toBe(false);
+  });
+
+  it('o resumo para o WhatsApp traz pontos e votos por jogo', async () => {
+    const user = userEvent.setup();
+    await open(
+      gamesEvent({ votesGames: { 'u-bia': ['g-catan'], 'u-caio': ['g-catan', 'g-azul'] } }),
+    );
+
+    await user.click(screen.getByRole('button', { name: /Copiar resumo/ }));
+
+    const copied = await navigator.clipboard.readText();
+    expect(copied).toContain('- Catan: 4 pt(s) (2 voto(s))');
+    expect(copied).toContain('- Azul: 1 pt(s) (1 voto(s))');
   });
 });
