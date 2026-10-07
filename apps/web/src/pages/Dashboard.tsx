@@ -16,6 +16,7 @@ import {
 import { SkeletonCard, SkeletonRows } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
 import { MonthCalendar } from '../components/MonthCalendar';
+import { InstallPrompt } from '../components/InstallPrompt';
 import './Dashboard.scss';
 
 // Quantos dos próximos eventos têm a presença consultada (uma chamada à API por evento)
@@ -157,6 +158,8 @@ export const Dashboard = () => {
           <p className="muted">Suas próximas jogatinas e grupos.</p>
         </div>
       </header>
+
+      <InstallPrompt />
 
       {loadingEvents && (
         <div className="dashboard-skeleton-hero">
