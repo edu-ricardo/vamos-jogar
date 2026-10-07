@@ -24,6 +24,9 @@ vi.mock('../services/eventService', () => ({
     deleteEvent: vi.fn(),
     forceReminders: vi.fn(),
     suggestGames: vi.fn(),
+    notifyGroup: vi.fn(),
+    getAttendance: vi.fn().mockResolvedValue([]),
+    setAttendance: vi.fn(),
   },
 }));
 vi.mock('../services/groupService', () => ({
@@ -357,5 +360,148 @@ describe('Evento — adicionar ao calendário', () => {
   it('enquanto a data não foi definida não há botão de calendário', async () => {
     await open(dateEvent());
     expect(screen.queryByRole('button', { name: /Adicionar ao calendário/ })).toBeNull();
+  });
+});
+
+describe('Evento — você vai?', () => {
+  const answers = (mine: 'yes' | 'maybe' | 'no' | null = null) => [
+    { userId: 'u-edu', name: 'Edu', status: mine },
+    { userId: 'u-bia', name: 'Bia', status: 'yes' as const },
+    { userId: 'u-caio', name: 'Caio', status: 'no' as const },
+    { userId: 'u-duda', name: 'Duda', status: null },
+  ];
+
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchGroupMembers).mockResolvedValue(members);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    vi.mocked(eventService.getAttendance).mockResolvedValue(answers());
+  });
+
+  it('com a data definida mostra as respostas agrupadas e quem ainda não respondeu', async () => {
+    await open(gamesEvent());
+
+    expect(await screen.findByText('Vão (1)')).toBeTruthy();
+    expect(screen.getByText('Não vão (1)')).toBeTruthy();
+    expect(screen.getByText('Sem resposta (2)')).toBeTruthy();
+    expect(screen.getByText('Edu, Duda')).toBeTruthy();
+    expect(eventService.getAttendance).toHaveBeenCalledWith('e1', 'token-de-teste');
+    for (const name of ['Vou', 'Talvez', 'Não vou']) {
+      expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('false');
+    }
+  });
+
+  it('marca a resposta atual da pessoa', async () => {
+    vi.mocked(eventService.getAttendance).mockResolvedValue(answers('maybe'));
+    await open(gamesEvent());
+
+    expect(
+      (await screen.findByRole('button', { name: 'Talvez' })).getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('responder grava na API e atualiza a lista', async () => {
+    const user = userEvent.setup();
+    await open(gamesEvent());
+    await screen.findByText('Vão (1)');
+    vi.mocked(eventService.getAttendance).mockResolvedValue(answers('yes'));
+
+    await user.click(screen.getByRole('button', { name: 'Vou' }));
+
+    expect(eventService.setAttendance).toHaveBeenCalledWith('e1', 'yes', 'token-de-teste');
+    expect(await screen.findByText('Vão (2)')).toBeTruthy();
+  });
+
+  it('se a API recusar, volta ao que era e avisa', async () => {
+    const user = userEvent.setup();
+    vi.mocked(eventService.setAttendance).mockRejectedValue(new Error('Sem permissão.'));
+    await open(gamesEvent());
+    await screen.findByText('Vão (1)');
+
+    await user.click(screen.getByRole('button', { name: 'Vou' }));
+
+    expect(toast.error).toHaveBeenCalledWith('Sem permissão.');
+    expect(screen.getByRole('button', { name: 'Vou' }).getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('antes de a data ser definida a pergunta não aparece', async () => {
+    await open(dateEvent());
+
+    expect(screen.queryByRole('button', { name: 'Vou' })).toBeNull();
+    expect(eventService.getAttendance).not.toHaveBeenCalled();
+  });
+
+  it('se as presenças não carregarem, o resto da página continua funcionando', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.mocked(eventService.getAttendance).mockRejectedValue(new Error('fora do ar'));
+
+    expect((await open(gamesEvent())).textContent).toBe('Jogatina de aniversário');
+    expect(screen.getByText('O que vamos jogar?')).toBeTruthy();
+  });
+});
+
+describe('Evento — avisos ao grupo', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchGroupMembers).mockResolvedValue(members);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    vi.mocked(eventService.getAttendance).mockResolvedValue([]);
+    vi.mocked(eventService.confirmEvent).mockResolvedValue(undefined);
+    vi.mocked(eventService.notifyGroup).mockResolvedValue(undefined);
+  });
+
+  it('ao cravar data e local, pede o aviso "date_set"', async () => {
+    const user = userEvent.setup();
+    await open(dateEvent());
+
+    await user.click(screen.getByLabelText(/10\/10\/2026/));
+    await user.click(screen.getByLabelText(/Ludoteca Café/));
+    await user.click(screen.getByRole('button', { name: /Cravar vencedores/ }));
+    await user.click(screen.getByRole('button', { name: 'Confirmar e ir para jogos' }));
+
+    expect(eventService.notifyGroup).toHaveBeenCalledWith('e1', 'date_set', 'token-de-teste');
+  });
+
+  it('ao confirmar a mesa, pede o aviso "confirmed"', async () => {
+    const user = userEvent.setup();
+    await open(gamesEvent());
+
+    await user.click(screen.getByRole('button', { name: /Encerrar votação de jogos/ }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Confirmar jogatina' }),
+    );
+
+    expect(eventService.confirmEvent).toHaveBeenCalled();
+    expect(eventService.notifyGroup).toHaveBeenCalledWith('e1', 'confirmed', 'token-de-teste');
+  });
+
+  it('não pede aviso quando a ação principal falha', async () => {
+    const user = userEvent.setup();
+    vi.mocked(eventService.confirmEvent).mockRejectedValue(new Error('falhou'));
+    await open(gamesEvent());
+
+    await user.click(screen.getByRole('button', { name: /Encerrar votação de jogos/ }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Confirmar jogatina' }),
+    );
+
+    expect(eventService.notifyGroup).not.toHaveBeenCalled();
+    expect(toast.error).toHaveBeenCalledWith('Erro ao encerrar votação de jogos.');
+  });
+
+  it('se o aviso falhar, a ação principal continua valendo', async () => {
+    const user = userEvent.setup();
+    vi.mocked(eventService.notifyGroup).mockRejectedValue(new Error('push fora do ar'));
+    await open(gamesEvent());
+
+    await user.click(screen.getByRole('button', { name: /Encerrar votação de jogos/ }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Confirmar jogatina' }),
+    );
+
+    expect(toast.success).toHaveBeenCalledWith('Jogatina confirmada!');
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });

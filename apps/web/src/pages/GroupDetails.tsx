@@ -119,13 +119,18 @@ export const GroupDetails = () => {
         }
       }
 
-      await eventService.createEvent(
+      const eventId = await eventService.createEvent(
         id,
         user.uid,
         title,
         dates,
         locations.map(({ id, name, address }) => ({ id, name, address })),
       );
+      // Sem esperar: o evento já existe, o aviso ao grupo segue em segundo plano
+      user
+        .getIdToken()
+        .then((token) => eventService.notifyGroup(eventId, 'created', token))
+        .catch(() => {});
 
       toast.success('Evento criado e pronto para votação!');
       setShowModal(false);

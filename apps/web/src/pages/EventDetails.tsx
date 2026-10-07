@@ -6,6 +6,9 @@ import {
   type Event,
   type FavoriteLocation,
   type EventGameOption,
+  type AnnounceKind,
+  type AttendanceAnswer,
+  type AttendanceStatus,
 } from '../services/eventService';
 import { ludotecaService, type Game } from '../services/ludotecaService';
 import { groupService, type GroupMember } from '../services/groupService';
@@ -22,6 +25,20 @@ import { buildIcs, downloadIcs } from '../services/calendarFile';
 import { EventFormModal, type EventFormValues } from '../components/EventFormModal';
 import toast from 'react-hot-toast';
 import './EventDetails.scss';
+
+const RSVP_BUTTONS: { status: AttendanceStatus; label: string }[] = [
+  { status: 'yes', label: 'Vou' },
+  { status: 'maybe', label: 'Talvez' },
+  { status: 'no', label: 'Não vou' },
+];
+
+// Como a lista de respostas é agrupada, na ordem em que aparece
+const RSVP_GROUPS: { status: AttendanceStatus | null; label: string }[] = [
+  { status: 'yes', label: 'Vão' },
+  { status: 'maybe', label: 'Talvez' },
+  { status: 'no', label: 'Não vão' },
+  { status: null, label: 'Sem resposta' },
+];
 
 const mapsUrl = (address: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
@@ -47,6 +64,7 @@ export const EventDetails = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [groupAdminId, setGroupAdminId] = useState('');
   const [groupName, setGroupName] = useState('');
+  const [attendance, setAttendance] = useState<AttendanceAnswer[]>([]);
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -87,6 +105,15 @@ export const EventDetails = () => {
       setGroupAdminId(group?.adminId || '');
       setGroupName(group?.name || '');
       setMembers(groupMembers);
+
+      // "Você vai?" só existe depois que a data foi definida; uma falha aqui não derruba a página
+      if (user && fetched.finalDateId) {
+        try {
+          setAttendance(await eventService.getAttendance(eventId, await user.getIdToken()));
+        } catch (err) {
+          console.warn('Presenças não carregadas:', err);
+        }
+      }
 
       if (user) {
         if (fetched.votesDate && fetched.votesDate[user.uid])
@@ -182,10 +209,35 @@ export const EventDetails = () => {
     setConfirmAction('advance');
   };
 
+  const handleAttendance = async (status: AttendanceStatus) => {
+    if (!eventId || !user) return;
+    const previous = attendance;
+    // Mostra a escolha na hora; se a API recusar, volta ao que era
+    setAttendance(attendance.map((a) => (a.userId === user.uid ? { ...a, status } : a)));
+    try {
+      const token = await user.getIdToken();
+      await eventService.setAttendance(eventId, status, token);
+      setAttendance(await eventService.getAttendance(eventId, token));
+    } catch (err) {
+      setAttendance(previous);
+      toast.error((err as Error).message || 'Erro ao salvar a sua resposta.');
+    }
+  };
+
+  // Avisa o grupo por notificação, em segundo plano: se falhar, a ação principal não é afetada
+  const announce = (kind: AnnounceKind) => {
+    if (!user || !eventId) return;
+    user
+      .getIdToken()
+      .then((token) => eventService.notifyGroup(eventId, kind, token))
+      .catch(() => {});
+  };
+
   const handleAdvanceToGames = async () => {
     if (!groupId || !eventId) return;
     try {
       await eventService.advanceToGamesVoting(groupId, eventId, selectedDate, selectedLocation);
+      announce('date_set');
       toast.success('Votação de Jogos iniciada!');
       setConfirmAction(null);
       loadEvent();
@@ -341,6 +393,7 @@ export const EventDetails = () => {
     setSubmitting(true);
     try {
       await eventService.confirmEvent(groupId, eventId, finalGameSelection);
+      announce('confirmed');
       toast.success('Jogatina confirmada!');
       setShowCloseGamesModal(false);
       loadEvent();
@@ -375,6 +428,8 @@ export const EventDetails = () => {
 
   const finalDate = event.dateOptions.find((d) => d.id === event.finalDateId);
   const finalLocation = event.locationOptions.find((l) => l.id === event.finalLocationId);
+
+  const myAttendance = attendance.find((a) => a.userId === user?.uid)?.status ?? null;
 
   const dateVotes = countChoices(event.votesDate);
   const locationVotes = countChoices(event.votesLocation);
@@ -613,6 +668,39 @@ export const EventDetails = () => {
         </div>
 
         <aside className="event-aside">
+          {finalDate && (
+            <section className="card event-rsvp">
+              <h2 className="event-subtitle">Você vai?</h2>
+              <div className="event-rsvp-buttons">
+                {RSVP_BUTTONS.map(({ status, label }) => (
+                  <button
+                    key={status}
+                    type="button"
+                    aria-pressed={myAttendance === status}
+                    className={`btn-sm ${myAttendance === status ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => handleAttendance(status)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <ul className="event-rsvp-list">
+                {RSVP_GROUPS.map(({ status, label }) => {
+                  const names = attendance.filter((a) => a.status === status).map((a) => a.name);
+                  if (names.length === 0) return null;
+                  return (
+                    <li key={label}>
+                      <strong>
+                        {label} ({names.length})
+                      </strong>
+                      <span className="muted">{names.join(', ')}</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          )}
+
           {event.status !== 'CONFIRMED' && (
             <section className="card">
               <h2 className="event-subtitle">

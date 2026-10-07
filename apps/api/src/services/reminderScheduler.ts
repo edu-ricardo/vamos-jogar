@@ -1,17 +1,18 @@
 const HOUR_MS = 60 * 60 * 1000;
 
 // Verifica os lembretes de hora em hora dentro da própria API (sem serviço externo de cron).
-// O intervalo de 3 dias por evento é garantido pelo reminderService, não por este relógio.
+// Quanto cada lembrete se repete (ex.: 3 dias por evento) é regra do serviço, não deste relógio.
 export const startReminderScheduler = (
   processScheduledReminders: () => Promise<number>,
   intervalMs = HOUR_MS,
+  label = 'Lembretes de voto',
 ) => {
   const run = async () => {
     try {
       const notified = await processScheduledReminders();
-      if (notified > 0) console.log(`Lembretes de voto enviados para ${notified} pessoa(s)`);
+      if (notified > 0) console.log(`${label} enviados para ${notified} pessoa(s)`);
     } catch (err) {
-      console.error('Falha ao processar lembretes:', (err as Error).message);
+      console.error(`Falha ao processar lembretes (${label}):`, (err as Error).message);
     }
   };
   // Primeira verificação um minuto depois de subir, para o PocketBase já estar pronto

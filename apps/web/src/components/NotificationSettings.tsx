@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
-import { notificationService, type NotificationStatus } from '../services/notificationService';
+import {
+  NOTIFICATION_KIND_LABELS,
+  notificationService,
+  type NotificationKind,
+  type NotificationPrefs,
+  type NotificationStatus,
+} from '../services/notificationService';
+import './NotificationSettings.scss';
 
 const EXPLANATION: Record<NotificationStatus, string> = {
   enabled: 'Este aparelho recebe os lembretes quando falta o seu voto em um evento.',
@@ -18,10 +25,34 @@ export const NotificationSettings = () => {
   const { user } = useAuth();
   const [status, setStatus] = useState<NotificationStatus | null>(null);
   const [busy, setBusy] = useState(false);
+  const [prefs, setPrefs] = useState<NotificationPrefs | null>(null);
 
   useEffect(() => {
     notificationService.getStatus().then(setStatus, () => setStatus('unsupported'));
   }, []);
+
+  // As preferências são da pessoa (valem em todos os aparelhos), não deste aparelho
+  useEffect(() => {
+    if (!user) return;
+    user
+      .getIdToken()
+      .then(notificationService.getPreferences)
+      .then(setPrefs, () => setPrefs(null));
+  }, [user]);
+
+  const changePreference = async (kind: NotificationKind, enabled: boolean) => {
+    if (!user || !prefs) return;
+    const previous = prefs;
+    setPrefs({ ...prefs, [kind]: enabled });
+    try {
+      setPrefs(
+        await notificationService.setPreferences(await user.getIdToken(), { [kind]: enabled }),
+      );
+    } catch (err) {
+      setPrefs(previous);
+      toast.error((err as Error).message || 'Erro ao salvar a preferência.');
+    }
+  };
 
   const toggle = async () => {
     if (!user || !status) return;
@@ -62,6 +93,21 @@ export const NotificationSettings = () => {
               ? 'Desativar neste aparelho'
               : 'Ativar notificações'}
         </button>
+      )}
+      {prefs && (
+        <fieldset className="notification-prefs">
+          <legend>Quais avisos você quer receber (vale para todos os seus aparelhos)</legend>
+          {(Object.keys(NOTIFICATION_KIND_LABELS) as NotificationKind[]).map((kind) => (
+            <label key={kind}>
+              <input
+                type="checkbox"
+                checked={prefs[kind]}
+                onChange={(e) => changePreference(kind, e.target.checked)}
+              />
+              {NOTIFICATION_KIND_LABELS[kind]}
+            </label>
+          ))}
+        </fieldset>
       )}
     </section>
   );

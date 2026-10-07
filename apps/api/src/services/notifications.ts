@@ -1,7 +1,10 @@
 import webpush from 'web-push';
 import { getAdminClient } from '../lib/pocketbase';
-import { createPushService, type SendNotification } from './pushService';
+import { createPushService, type PushMessage, type SendNotification } from './pushService';
 import { createReminderService } from './reminderService';
+import { createPrefsService, type NotificationKind } from './notificationPrefs';
+import { createEventNotificationService } from './eventNotificationService';
+import { createAttendanceService } from './attendanceService';
 
 export interface VapidConfig {
   publicKey: string;
@@ -49,4 +52,21 @@ const sendWithWebPush: SendNotification = (subscription, payload) => {
 };
 
 export const pushService = createPushService(getAdminClient, sendWithWebPush);
-export const reminderService = createReminderService(getAdminClient, pushService.sendToUsers);
+export const prefsService = createPrefsService(getAdminClient);
+
+// Envia pelo push só a quem não desligou esse tipo de aviso em Conta
+const notifyFor =
+  (kind: NotificationKind) =>
+  async (userIds: string[], message: PushMessage): Promise<number> =>
+    pushService.sendToUsers(await prefsService.filterRecipients(userIds, kind), message);
+
+export const reminderService = createReminderService(getAdminClient, notifyFor('reminder'));
+
+// Fuso em que as datas dos eventos são lidas (o relógio que o grupo vê)
+const appTimeZone = () => process.env.APP_TIMEZONE || 'America/Sao_Paulo';
+export const eventNotificationService = createEventNotificationService(
+  getAdminClient,
+  notifyFor,
+  appTimeZone,
+);
+export const attendanceService = createAttendanceService(getAdminClient);

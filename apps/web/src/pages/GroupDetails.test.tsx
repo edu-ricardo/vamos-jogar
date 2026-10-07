@@ -20,7 +20,13 @@ vi.mock('../services/groupService', () => ({
   },
 }));
 vi.mock('../services/eventService', () => ({
-  eventService: { fetchGroupEvents: vi.fn(), fetchFavoriteLocations: vi.fn() },
+  eventService: {
+    fetchGroupEvents: vi.fn(),
+    fetchFavoriteLocations: vi.fn(),
+    createEvent: vi.fn(),
+    saveFavoriteLocation: vi.fn(),
+    notifyGroup: vi.fn(),
+  },
 }));
 vi.mock('../services/ludotecaService', () => ({ ludotecaService: {} }));
 
@@ -114,5 +120,66 @@ describe('Grupo — sair', () => {
 
     expect(toast.error).toHaveBeenCalledWith('Você não é membro.');
     expect(screen.queryByTestId('outra-rota')).toBeNull();
+  });
+});
+
+describe('Grupo — criar evento', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([]);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    vi.mocked(eventService.createEvent).mockResolvedValue('novo-evento');
+    vi.mocked(eventService.notifyGroup).mockResolvedValue(undefined);
+  });
+
+  const fillAndSubmit = async () => {
+    const user = userEvent.setup();
+    await open('u-ana');
+    await user.click(screen.getByRole('button', { name: '+ Criar evento' }));
+    await user.type(screen.getByLabelText('Título do evento'), 'Noite dos euros');
+    await user.type(screen.getByLabelText('Data'), '2026-10-20');
+    await user.type(screen.getByLabelText('Início'), '19:00');
+    await user.type(screen.getByPlaceholderText(/Nome \(Ex/), 'Casa do Edu');
+    await user.type(screen.getByPlaceholderText(/Endereço completo/), 'Rua das Flores, 100');
+    await user.click(screen.getByRole('button', { name: 'Criar e abrir votação' }));
+  };
+
+  it('cria o evento e pede o aviso "created" ao grupo, com o id do evento novo', async () => {
+    await fillAndSubmit();
+
+    expect(eventService.createEvent).toHaveBeenCalledWith(
+      'g1',
+      'u-edu',
+      'Noite dos euros',
+      [expect.objectContaining({ date: '2026-10-20', startTime: '19:00' })],
+      [expect.objectContaining({ name: 'Casa do Edu', address: 'Rua das Flores, 100' })],
+    );
+    await vi.waitFor(() =>
+      expect(eventService.notifyGroup).toHaveBeenCalledWith(
+        'novo-evento',
+        'created',
+        'token-de-teste',
+      ),
+    );
+    expect(toast.success).toHaveBeenCalledWith('Evento criado e pronto para votação!');
+  });
+
+  it('se o aviso falhar, o evento continua criado e sem mensagem de erro', async () => {
+    vi.mocked(eventService.notifyGroup).mockRejectedValue(new Error('push fora do ar'));
+    await fillAndSubmit();
+
+    await vi.waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('Evento criado e pronto para votação!'),
+    );
+    expect(toast.error).not.toHaveBeenCalled();
+  });
+
+  it('se criar o evento falhar, não avisa ninguém', async () => {
+    vi.mocked(eventService.createEvent).mockRejectedValue(new Error('banco fora'));
+    await fillAndSubmit();
+
+    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledWith('Erro ao criar evento.'));
+    expect(eventService.notifyGroup).not.toHaveBeenCalled();
   });
 });

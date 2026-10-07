@@ -12,8 +12,18 @@ vi.mock('../context/AuthContext', async () => (await import('../test/auth')).aut
 vi.mock('react-hot-toast', async () => (await import('../test/auth')).toastModuleMock);
 vi.mock('../services/groupService', () => ({ groupService: {} }));
 vi.mock('../services/accountService', () => ({ accountService: { deleteAccount: vi.fn() } }));
-vi.mock('../services/notificationService', () => ({
-  notificationService: { getStatus: vi.fn().mockResolvedValue('unsupported') },
+vi.mock('../services/notificationService', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../services/notificationService')>()),
+  notificationService: {
+    getStatus: vi.fn().mockResolvedValue('unsupported'),
+    getPreferences: vi.fn().mockResolvedValue({
+      created: true,
+      date_set: true,
+      confirmed: true,
+      eve: true,
+      reminder: true,
+    }),
+  },
 }));
 
 const newPassword = () => screen.getByLabelText(/^Nova senha/);

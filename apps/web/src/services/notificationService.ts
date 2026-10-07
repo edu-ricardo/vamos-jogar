@@ -1,5 +1,17 @@
 import { apiRequest } from './apiClient';
 
+// Tipos de aviso que cada pessoa liga ou desliga (vale em todos os aparelhos)
+export type NotificationKind = 'created' | 'date_set' | 'confirmed' | 'eve' | 'reminder';
+export type NotificationPrefs = Record<NotificationKind, boolean>;
+
+export const NOTIFICATION_KIND_LABELS: Record<NotificationKind, string> = {
+  created: 'Evento novo no grupo',
+  date_set: 'Data e local definidos',
+  confirmed: 'Jogatina confirmada',
+  eve: 'Lembrete na véspera da jogatina',
+  reminder: 'Lembrete quando falta o meu voto',
+};
+
 export type NotificationStatus =
   | 'unsupported' // navegador sem Web Push
   | 'install-required' // iPhone/iPad: só funciona com o app instalado na tela inicial
@@ -65,6 +77,20 @@ export const notificationService = {
     });
     return 'enabled';
   },
+
+  getPreferences: (idToken: string) =>
+    apiRequest<NotificationPrefs>('/api/push/preferences', {
+      idToken,
+      fallbackError: 'Erro ao carregar as preferências.',
+    }),
+
+  setPreferences: (idToken: string, change: Partial<NotificationPrefs>) =>
+    apiRequest<NotificationPrefs>('/api/push/preferences', {
+      method: 'PUT',
+      idToken,
+      body: change,
+      fallbackError: 'Erro ao salvar as preferências.',
+    }),
 
   // Remove o aparelho no servidor e cancela a inscrição no navegador
   disable: async (idToken: string): Promise<NotificationStatus> => {

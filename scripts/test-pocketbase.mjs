@@ -55,6 +55,7 @@ try {
       'tests/pocketbase.import.test.ts',
       'tests/pocketbase.push.test.ts',
       'tests/pocketbase.admin.test.ts',
+      'tests/pocketbase.notifications.test.ts',
       '--no-file-parallelism',
     ],
     {

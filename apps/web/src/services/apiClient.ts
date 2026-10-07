@@ -13,7 +13,7 @@ export class ApiError extends Error {
 }
 
 interface ApiRequestOptions {
-  method?: 'GET' | 'POST' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   idToken?: string;
   body?: unknown;
   // Mensagem usada quando a API não devolve { error }

@@ -190,6 +190,30 @@
   gap: 10px;
 }
 
+.event-rsvp-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+
+  button {
+    flex: 1;
+  }
+}
+
+.event-rsvp-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  li {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 0.9rem;
+  }
+}
+
 .event-select-all {
   margin-bottom: 12px;
 }

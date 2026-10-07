@@ -24,6 +24,7 @@ export interface ImportReport {
 // Ordem que respeita as relações (filhos antes dos pais)
 export const APP_COLLECTIONS_IN_DELETE_ORDER = [
   'votes',
+  'attendances',
   'event_games',
   'events',
   'memberships',

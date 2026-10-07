@@ -7,7 +7,12 @@ import cronRoutes from './routes/cron';
 import accountRoutes from './routes/account';
 import pushRoutes from './routes/push';
 import adminRoutes from './routes/admin';
-import { readVapidConfig, reminderService } from './services/notifications';
+import eventRoutes from './routes/events';
+import {
+  eventNotificationService,
+  readVapidConfig,
+  reminderService,
+} from './services/notifications';
 import { startReminderScheduler } from './services/reminderScheduler';
 
 dotenv.config();
@@ -27,6 +32,7 @@ app.use('/api/cron', cronRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/events', eventRoutes);
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
 app.listen(PORT, '0.0.0.0', () => {
@@ -40,3 +46,8 @@ if ('missing' in vapid) {
 }
 
 startReminderScheduler(reminderService.processScheduledReminders);
+startReminderScheduler(
+  eventNotificationService.processEveReminders,
+  undefined,
+  'Lembretes da véspera',
+);

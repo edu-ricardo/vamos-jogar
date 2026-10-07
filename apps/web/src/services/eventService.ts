@@ -46,6 +46,18 @@ export interface Event {
   createdAt: any;
 }
 
+export type AttendanceStatus = 'yes' | 'no' | 'maybe';
+
+// Resposta de um membro do grupo à pergunta "você vai?"; null = ainda não respondeu
+export interface AttendanceAnswer {
+  userId: string;
+  name: string;
+  status: AttendanceStatus | null;
+}
+
+// Avisos que o app pede à API depois de uma ação do organizador
+export type AnnounceKind = 'created' | 'date_set' | 'confirmed';
+
 // Acesso aos dados de eventos e locais favoritos; a implementação atual é o Firestore
 export interface EventRepository {
   createEvent(
@@ -87,6 +99,37 @@ export interface EventRepository {
 
 export const eventService = {
   ...backend.events,
+
+  // Avisa o grupo por notificação. Nunca atrapalha a ação que o originou: falha só vai ao console
+  // (a API recusa o que já foi avisado, não é organizador ou está fora da etapa).
+  notifyGroup: async (eventId: string, kind: AnnounceKind, idToken: string): Promise<void> => {
+    try {
+      await apiRequest(`/api/events/${eventId}/announce`, {
+        method: 'POST',
+        idToken,
+        body: { kind },
+        fallbackError: 'Erro ao avisar o grupo.',
+      });
+    } catch (err) {
+      console.warn('Aviso ao grupo não enviado:', err);
+    }
+  },
+
+  getAttendance: async (eventId: string, idToken: string): Promise<AttendanceAnswer[]> =>
+    (
+      await apiRequest<{ answers: AttendanceAnswer[] }>(`/api/events/${eventId}/attendance`, {
+        idToken,
+        fallbackError: 'Erro ao carregar as presenças.',
+      })
+    ).answers,
+
+  setAttendance: (eventId: string, status: AttendanceStatus, idToken: string) =>
+    apiRequest(`/api/events/${eventId}/attendance`, {
+      method: 'PUT',
+      idToken,
+      body: { status },
+      fallbackError: 'Erro ao salvar a sua resposta.',
+    }),
 
   forceReminders: async (
     groupId: string,
