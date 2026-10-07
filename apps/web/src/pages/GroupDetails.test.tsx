@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen } from '@testing-library/react';
+import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import toast from 'react-hot-toast';
 import { fakeAuth, resetAuth } from '../test/auth';
@@ -279,5 +279,112 @@ describe('Grupo — jogos do grupo', () => {
     expect(
       (screen.getByRole('button', { name: 'Ver jogos do grupo' }) as HTMLButtonElement).disabled,
     ).toBe(false);
+  });
+});
+
+describe('Grupo — histórico', () => {
+  const PAST = '2020-03-01';
+  const FUTURE = '2099-01-01';
+  const table = [
+    { id: 'c', name: 'Catan', thumb: '', suggesterId: 'u-ana' },
+    { id: 'a', name: 'Azul', thumb: '', suggesterId: 'u-bia' },
+  ];
+
+  const evt = (id: string, title: string, date: string | null, extra = {}) =>
+    ({
+      id,
+      groupId: 'g1',
+      creatorId: 'u-ana',
+      title,
+      status: date ? 'CONFIRMED' : 'VOTING_DATE',
+      dateOptions: [{ id: 'd1', date: date ?? FUTURE, startTime: '19:00' }],
+      locationOptions: [{ id: 'l1', name: 'Casa do Edu', address: 'Rua A' }],
+      finalDateId: date ? 'd1' : undefined,
+      finalLocationId: date ? 'l1' : undefined,
+      votesDate: {},
+      votesLocation: {},
+      createdAt: '',
+      ...extra,
+    }) as never;
+
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+  });
+
+  it('separa o que está em andamento do que já aconteceu', async () => {
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([
+      evt('1', 'Próxima jogatina', FUTURE),
+      evt('2', 'Ainda votando', null),
+      evt('3', 'Jogatina antiga', PAST, { gameOptions: table, finalGameIds: ['c', 'a'] }),
+    ]);
+    await open('u-ana');
+
+    const eventos = within(screen.getByRole('heading', { name: 'Eventos' }).closest('section')!);
+    expect(eventos.getByText('Próxima jogatina')).toBeTruthy();
+    expect(eventos.getByText('Ainda votando')).toBeTruthy();
+    expect(eventos.queryByText('Jogatina antiga')).toBeNull();
+    expect(eventos.getByText('01/01/2099 às 19:00 · Casa do Edu')).toBeTruthy();
+
+    const historico = within(
+      screen.getByRole('heading', { name: 'Histórico' }).closest('section')!,
+    );
+    expect(historico.getByText('Jogatina antiga')).toBeTruthy();
+    expect(historico.getByText('01/03/2020 às 19:00 · Casa do Edu')).toBeTruthy();
+    expect(historico.getByText('Mesa: Catan, Azul')).toBeTruthy();
+  });
+
+  it('lista os jogos mais jogados, com quantas vezes e a última', async () => {
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([
+      evt('1', 'Primeira', '2020-03-01', { gameOptions: table, finalGameIds: ['c', 'a'] }),
+      evt('2', 'Segunda', '2020-04-01', { gameOptions: table, finalGameIds: ['c'] }),
+    ]);
+    await open('u-ana');
+
+    const mais = within(screen.getByRole('heading', { name: 'Jogos mais jogados' }).parentElement!);
+    const items = mais.getAllByRole('listitem').map((li) => li.textContent);
+    expect(items).toEqual([
+      'Catan2 vezes · última em 01/04/2020',
+      'Azul1 vez · última em 01/03/2020',
+    ]);
+  });
+
+  it('evento passado que não foi confirmado não conta jogos e avisa', async () => {
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([
+      evt('1', 'Abandonada', PAST, { status: 'VOTING_GAMES', gameOptions: table }),
+    ]);
+    await open('u-ana');
+
+    expect(screen.getByText('Não chegou a ser confirmado')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Jogos mais jogados' })).toBeNull();
+  });
+
+  it('mostra as 5 mais recentes e libera o resto em "Mostrar todas"', async () => {
+    const user = userEvent.setup();
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue(
+      Array.from({ length: 7 }, (_, i) => evt(String(i), `Jogatina ${i + 1}`, `2020-0${i + 1}-01`)),
+    );
+    await open('u-ana');
+
+    expect(screen.queryByText('Jogatina 1')).toBeNull();
+    expect(screen.getByText('Jogatina 7')).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar todas (7)' }));
+
+    expect(screen.getByText('Jogatina 1')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Mostrar todas/ })).toBeNull();
+  });
+
+  it('sem eventos passados não há histórico; só passados mostra "nenhum em andamento"', async () => {
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([evt('1', 'Aberto', null)]);
+    await open('u-ana');
+    expect(screen.queryByRole('heading', { name: 'Histórico' })).toBeNull();
+    cleanup();
+
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([evt('2', 'Velha', PAST)]);
+    await open('u-ana');
+    expect(screen.getByText(/Nenhum evento em andamento/)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Histórico' })).toBeTruthy();
   });
 });

@@ -7,10 +7,20 @@ import { groupService, type Group } from '../services/groupService';
 import { ludotecaService, type Game } from '../services/ludotecaService';
 import { searchGroupGames, type GroupGame } from '../services/groupGames';
 import { gameMeta } from '../services/gameMeta';
+import {
+  eventWhen,
+  rankPlayedGames,
+  splitEvents,
+  tableGameNames,
+  todayLocal,
+} from '../services/groupHistory';
 import { Modal } from '../components/Modal';
 import { EventFormModal, type EventFormValues } from '../components/EventFormModal';
 import toast from 'react-hot-toast';
 import './GroupDetails.scss';
+
+// Quantas jogatinas anteriores aparecem antes de "Mostrar todas"
+const PAST_EVENTS_SHOWN = 5;
 
 export const GroupDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -23,6 +33,7 @@ export const GroupDetails = () => {
   const [groupGames, setGroupGames] = useState<GroupGame[] | null>(null);
   const [gamesLoading, setGamesLoading] = useState(false);
   const [gamesQuery, setGamesQuery] = useState('');
+  const [showAllPast, setShowAllPast] = useState(false);
 
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,6 +173,12 @@ export const GroupDetails = () => {
 
   const isAdmin = !!user && groupDetails?.adminId === user.uid;
 
+  // Próximos e em votação de um lado; o que já aconteceu vira histórico
+  const today = todayLocal();
+  const { upcoming, past } = splitEvents(events, today);
+  const playedGames = rankPlayedGames(events, today);
+  const visiblePast = showAllPast ? past : past.slice(0, PAST_EVENTS_SHOWN);
+
   return (
     <div>
       <Link to="/grupos" className="btn-back">
@@ -185,13 +202,18 @@ export const GroupDetails = () => {
               <p className="card empty-state">
                 Nenhum evento criado ainda. Que tal marcar a próxima jogatina?
               </p>
+            ) : upcoming.length === 0 ? (
+              <p className="card empty-state">
+                Nenhum evento em andamento. Que tal marcar a próxima jogatina?
+              </p>
             ) : (
               <ul className="group-events">
-                {events.map((ev) => (
+                {upcoming.map((ev) => (
                   <li key={ev.id}>
                     <Link to={`/event/${id}/${ev.id}`} className="card group-event">
                       <div>
                         <h3>{ev.title}</h3>
+                        {eventWhen(ev) && <p className="muted group-event-when">{eventWhen(ev)}</p>}
                         <span className="chip">{EVENT_STATUS_LABEL[ev.status]}</span>
                       </div>
                       <span className="muted">&rarr;</span>
@@ -201,6 +223,56 @@ export const GroupDetails = () => {
               </ul>
             )}
           </section>
+
+          {past.length > 0 && (
+            <section>
+              <h2 className="group-section-title">Histórico</h2>
+              <div className="card group-history">
+                {playedGames.length > 0 && (
+                  <div>
+                    <h3>Jogos mais jogados</h3>
+                    <ol className="group-played">
+                      {playedGames.slice(0, 5).map((g) => (
+                        <li key={g.name}>
+                          <strong>{g.name}</strong>
+                          <span className="muted">
+                            {g.times} {g.times === 1 ? 'vez' : 'vezes'} · última em{' '}
+                            {g.lastDate.split('-').reverse().join('/')}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                <div>
+                  <h3>Jogatinas anteriores</h3>
+                  <ul className="group-past">
+                    {visiblePast.map((ev) => (
+                      <li key={ev.id}>
+                        <Link to={`/event/${id}/${ev.id}`}>
+                          <strong>{ev.title}</strong>
+                          <span className="muted">{eventWhen(ev)}</span>
+                          {ev.status === 'CONFIRMED' ? (
+                            tableGameNames(ev).length > 0 && (
+                              <small className="muted">Mesa: {tableGameNames(ev).join(', ')}</small>
+                            )
+                          ) : (
+                            <small className="muted">Não chegou a ser confirmado</small>
+                          )}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  {past.length > PAST_EVENTS_SHOWN && !showAllPast && (
+                    <button className="btn-link" onClick={() => setShowAllPast(true)}>
+                      Mostrar todas ({past.length})
+                    </button>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
 
           <section>
             <h2 className="group-section-title">Jogos do grupo</h2>
