@@ -19,6 +19,8 @@ import { EventFormModal, type EventFormValues } from '../components/EventFormMod
 import toast from 'react-hot-toast';
 import { SkeletonRows } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { GameCover } from '../components/GameCover';
+import { Avatar } from '../components/Avatar';
 import './GroupDetails.scss';
 
 // Quantas jogatinas anteriores aparecem antes de "Mostrar todas"
@@ -326,11 +328,7 @@ export const GroupDetails = () => {
                   <ul className="group-games-list">
                     {searchGroupGames(groupGames, gamesQuery).map((g) => (
                       <li key={g.key}>
-                        {g.image ? (
-                          <img src={g.image} alt="" />
-                        ) : (
-                          <div className="group-game-thumb" />
-                        )}
+                        <GameCover name={g.name} image={g.image} className="group-game-thumb" />
                         <div>
                           <strong>{g.name}</strong>
                           {gameMeta(g) && <small className="muted">{gameMeta(g)}</small>}
@@ -352,6 +350,7 @@ export const GroupDetails = () => {
           <ul>
             {members.map((m) => (
               <li key={m.id}>
+                <Avatar name={m.name} size="sm" />
                 <span className="group-member-name">
                   {m.name}
                   {m.id === groupDetails?.adminId && <small className="muted"> (admin)</small>}
@@ -430,7 +429,7 @@ export const GroupDetails = () => {
             <ul className="group-member-games">
               {memberGames.map((g) => (
                 <li key={g.id}>
-                  {g.image ? <img src={g.image} alt="" /> : <div className="group-game-thumb" />}
+                  <GameCover name={g.name} image={g.image} className="group-game-thumb" />
                   <div>
                     <strong>{g.name}</strong>
                     {g.playtime && <small className="muted">⏱ {g.playtime} min</small>}

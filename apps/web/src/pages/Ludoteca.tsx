@@ -7,16 +7,14 @@ import { Modal } from '../components/Modal';
 import { GameFilters, emptyGameFilters, toCollectionFilters } from '../components/GameFilters';
 import toast from 'react-hot-toast';
 import { SkeletonGrid, SkeletonRows } from '../components/Skeleton';
+import { GameCover } from '../components/GameCover';
 import { EmptyState } from '../components/EmptyState';
 import './Ludoteca.scss';
 
-// Capa do jogo ou um quadro vazio quando a fonte não tem imagem
-const GameThumb = ({ game }: { game: Game }) =>
-  game.image ? (
-    <img src={game.image} alt="" className="game-thumb" loading="lazy" />
-  ) : (
-    <div className="game-thumb" aria-hidden="true" />
-  );
+// Capa do jogo; sem imagem, um quadrado colorido com as iniciais
+const GameThumb = ({ game }: { game: Game }) => (
+  <GameCover name={game.name} image={game.image} className="game-thumb" />
+);
 
 export const Ludoteca = () => {
   const { user } = useAuth();

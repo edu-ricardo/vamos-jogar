@@ -260,3 +260,22 @@ describe('Admin — carregamento', () => {
     expect(screen.queryByText('Carregando')).toBeNull();
   });
 });
+
+describe('Admin — avatares', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(adminService.listUsers).mockResolvedValue([
+      user('u-edu', 'Edu', { admin: 'fixed' }),
+      user('u-bia', 'Bia'),
+    ]);
+  });
+
+  it('cada usuário aparece com o avatar de iniciais', async () => {
+    renderPage(<Admin />);
+    await screen.findByText('bia@exemplo.test');
+
+    expect(rowOf('Bia').getByText('B').className).toContain('avatar');
+    expect(rowOf('Edu').getByText('E').className).toContain('avatar');
+  });
+});

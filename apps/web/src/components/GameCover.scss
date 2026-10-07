@@ -1,0 +1,27 @@
+// A classe repetida sobe a especificidade: a cor da capa vale mesmo dentro de listas cujo CSS
+// também define um fundo para as miniaturas
+div.game-cover.game-cover {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: hsl(var(--tone) 70% 55% / 0.2);
+  color: hsl(var(--tone) 80% 72%);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  user-select: none;
+
+  @media (prefers-color-scheme: light) {
+    color: hsl(var(--tone) 60% 36%);
+  }
+}
+
+// Capas grandes
+.ludoteca-game div.game-cover {
+  font-size: 2.4rem;
+}
+
+.ludoteca-details div.game-cover {
+  font-size: 2rem;
+}

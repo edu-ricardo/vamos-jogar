@@ -31,6 +31,8 @@ import { EventFormModal, type EventFormValues } from '../components/EventFormMod
 import toast from 'react-hot-toast';
 import { Skeleton, SkeletonCard, SkeletonRows } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { GameCover } from '../components/GameCover';
+import { Avatar } from '../components/Avatar';
 import './EventDetails.scss';
 
 const RSVP_BUTTONS: { status: AttendanceStatus; label: string }[] = [
@@ -690,11 +692,7 @@ export const EventDetails = () => {
                             )
                           }
                         />
-                        {g.thumb ? (
-                          <img src={g.thumb} alt="" className="event-game-thumb" />
-                        ) : (
-                          <div className="event-game-thumb" />
-                        )}
+                        <GameCover name={g.name} image={g.thumb} className="event-game-thumb" />
                         <div className="event-option-info">
                           <strong>
                             {g.name}
@@ -780,11 +778,7 @@ export const EventDetails = () => {
                   .filter((g) => event.finalGameIds?.includes(g.id))
                   .map((g) => (
                     <div key={g.id} className="event-option">
-                      {g.thumb ? (
-                        <img src={g.thumb} alt="" className="event-game-thumb" />
-                      ) : (
-                        <div className="event-game-thumb" />
-                      )}
+                      <GameCover name={g.name} image={g.thumb} className="event-game-thumb" />
                       <div className="event-option-info">
                         <strong>{g.name}</strong>
                         <span className="muted">Leva: {g.suggesterName}</span>
@@ -815,14 +809,21 @@ export const EventDetails = () => {
               </div>
               <ul className="event-rsvp-list">
                 {RSVP_GROUPS.map(({ status, label }) => {
-                  const names = attendance.filter((a) => a.status === status).map((a) => a.name);
-                  if (names.length === 0) return null;
+                  const people = attendance.filter((a) => a.status === status);
+                  if (people.length === 0) return null;
                   return (
                     <li key={label}>
                       <strong>
-                        {label} ({names.length})
+                        {label} ({people.length})
                       </strong>
-                      <span className="muted">{names.join(', ')}</span>
+                      <span className="event-rsvp-people">
+                        {people.map((person) => (
+                          <span key={person.userId} className="event-person">
+                            <Avatar name={person.name} size="xs" />
+                            {person.name}
+                          </span>
+                        ))}
+                      </span>
                     </li>
                   );
                 })}
@@ -838,7 +839,10 @@ export const EventDetails = () => {
               <ul className="event-voters">
                 {members.map((m) => (
                   <li key={m.id}>
-                    <span>{m.name}</span>
+                    <span className="event-person">
+                      <Avatar name={m.name} size="xs" />
+                      {m.name}
+                    </span>
                     {phaseVotes[m.id] ? (
                       <span className="event-voted">✓ votou</span>
                     ) : (
@@ -1063,11 +1067,7 @@ export const EventDetails = () => {
                         )
                       }
                     />
-                    {g.image ? (
-                      <img src={g.image} alt="" className="event-game-thumb" />
-                    ) : (
-                      <div className="event-game-thumb" />
-                    )}
+                    <GameCover name={g.name} image={g.image} className="event-game-thumb" />
                     <div className="event-option-info">
                       <strong>{g.name}</strong>
                       <span className="muted">{gameMeta(g)}</span>

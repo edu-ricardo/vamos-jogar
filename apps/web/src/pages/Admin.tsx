@@ -11,6 +11,7 @@ import {
 import { Modal } from '../components/Modal';
 import { SkeletonRows } from '../components/Skeleton';
 import { EmptyState } from '../components/EmptyState';
+import { Avatar } from '../components/Avatar';
 import { EVENT_STATUS_LABEL } from '../services/eventResults';
 import './Admin.scss';
 
@@ -158,6 +159,7 @@ export const Admin = () => {
               <li key={u.id} className="card admin-user">
                 <div className="admin-user-info">
                   <strong>
+                    <Avatar name={u.name || u.email} size="sm" />
                     {u.name || 'Sem nome'}
                     {u.admin && (
                       <span className="chip">{u.admin === 'fixed' ? 'admin fixo' : 'admin'}</span>
@@ -230,6 +232,7 @@ export const Admin = () => {
                 {g.members.map((m) => (
                   <li key={m.id}>
                     <span>
+                      <Avatar name={m.name} size="xs" />
                       {m.name}
                       {m.id === g.adminId && <span className="chip">admin do grupo</span>}
                     </span>

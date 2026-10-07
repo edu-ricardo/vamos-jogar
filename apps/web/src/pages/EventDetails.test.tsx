@@ -504,7 +504,10 @@ describe('Evento — você vai?', () => {
     expect(await screen.findByText('Vão (1)')).toBeTruthy();
     expect(screen.getByText('Não vão (1)')).toBeTruthy();
     expect(screen.getByText('Sem resposta (2)')).toBeTruthy();
-    expect(screen.getByText('Edu, Duda')).toBeTruthy();
+    // Cada pessoa aparece com o seu avatar, dentro do grupo da resposta
+    const semResposta = within(screen.getByText('Sem resposta (2)').closest('li')!);
+    expect(semResposta.getByText('Edu')).toBeTruthy();
+    expect(semResposta.getByText('Duda')).toBeTruthy();
     expect(eventService.getAttendance).toHaveBeenCalledWith('e1', 'token-de-teste');
     for (const name of ['Vou', 'Talvez', 'Não vou']) {
       expect(screen.getByRole('button', { name }).getAttribute('aria-pressed')).toBe('false');
@@ -788,5 +791,33 @@ describe('Evento — carregamento', () => {
       'Jogatina de aniversário',
     );
     expect(screen.queryByText('Carregando o evento')).toBeNull();
+  });
+});
+
+describe('Evento — avatares', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchGroupMembers).mockResolvedValue(members);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    vi.mocked(eventService.getAttendance).mockResolvedValue([]);
+  });
+
+  it('quem já votou e quem falta aparecem com avatar', async () => {
+    await open(dateEvent());
+
+    const voters = screen.getByRole('heading', { name: /Votaram/ }).closest('section')!;
+    expect([...voters.querySelectorAll('.avatar')].map((a) => a.textContent)).toEqual([
+      'E',
+      'B',
+      'C',
+    ]);
+  });
+
+  it('jogo sem capa mostra as iniciais do jogo na lista de votação', async () => {
+    await open(gamesEvent());
+
+    const catan = screen.getByLabelText(/Catan/).closest('label')!;
+    expect(within(catan).getByText('C').className).toContain('game-cover');
   });
 });

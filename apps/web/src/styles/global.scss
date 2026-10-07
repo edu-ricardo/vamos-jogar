@@ -247,6 +247,13 @@ input[type='radio'] {
   white-space: nowrap;
 }
 
+// Matizes dos avatares e das capas de jogo sem imagem (veja toneOf em services/avatar)
+@for $i from 0 through 7 {
+  .tone-#{$i} {
+    --tone: #{($i * 45 + 250) % 360};
+  }
+}
+
 // Texto só para leitores de tela (fica fora da vista, mas é lido)
 .visually-hidden {
   position: absolute;

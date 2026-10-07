@@ -424,3 +424,21 @@ describe('Grupo — carregamento e estados vazios', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
   });
 });
+
+describe('Grupo — avatares', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([]);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+  });
+
+  it('cada membro aparece com o avatar de iniciais ao lado do nome', async () => {
+    await open('u-ana');
+
+    const panel = screen.getByRole('heading', { name: /Membros/ }).closest('aside')!;
+    const avatars = [...panel.querySelectorAll('.avatar')].map((a) => a.textContent);
+    expect(avatars).toEqual(['A', 'E', 'B']);
+    expect(within(panel).getByText('Ana')).toBeTruthy();
+  });
+});

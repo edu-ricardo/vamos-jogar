@@ -265,3 +265,27 @@ describe('Ludoteca — carregamento e estado vazio', () => {
     expect(screen.queryByText('Carregando sua ludoteca')).toBeNull();
   });
 });
+
+describe('Ludoteca — capas', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(ludotecaService.fetchUserCollection).mockResolvedValue([
+      { ...game('1', 'Catan', '60', 3, 4), image: 'capa-catan.jpg' },
+      game('2', '7 Wonders Duel', '30', 2, 2),
+    ]);
+  });
+
+  it('jogo com imagem mostra a capa; sem imagem, um quadrado colorido com as iniciais', async () => {
+    renderPage(<Ludoteca />);
+    await screen.findByText('Catan');
+
+    const catan = within(screen.getByText('Catan').closest('li')!);
+    expect(catan.getByRole('presentation', { hidden: true }).getAttribute('src')).toBe(
+      'capa-catan.jpg',
+    );
+
+    const duel = within(screen.getByText('7 Wonders Duel').closest('li')!);
+    expect(duel.getByText('7W')).toBeTruthy();
+  });
+});

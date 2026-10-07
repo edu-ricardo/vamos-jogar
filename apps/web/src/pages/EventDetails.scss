@@ -180,6 +180,19 @@
   text-align: center;
 }
 
+.event-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.event-rsvp-people {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
+
 .event-voters {
   list-style: none;
 
