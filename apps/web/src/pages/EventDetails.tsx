@@ -29,6 +29,8 @@ import { buildIcs, downloadIcs } from '../services/calendarFile';
 import { gameMeta } from '../services/gameMeta';
 import { EventFormModal, type EventFormValues } from '../components/EventFormModal';
 import toast from 'react-hot-toast';
+import { Skeleton, SkeletonCard, SkeletonRows } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
 import './EventDetails.scss';
 
 const RSVP_BUTTONS: { status: AttendanceStatus; label: string }[] = [
@@ -459,7 +461,24 @@ export const EventDetails = () => {
 
   const suggestableGames = filterCollection(myGames, toCollectionFilters(suggestFilters));
 
-  if (loading) return <p className="empty-state">Carregando evento...</p>;
+  if (loading) {
+    return (
+      <div>
+        <header className="event-skeleton-header">
+          <Skeleton variant="title" />
+          <Skeleton variant="chip" />
+        </header>
+        <div className="event-columns">
+          <div className="event-main">
+            <SkeletonCard label="Carregando o evento" lines={6} />
+          </div>
+          <aside className="event-aside">
+            <SkeletonCard label="Carregando quem já votou" lines={4} />
+          </aside>
+        </div>
+      </div>
+    );
+  }
   if (!event) return null;
 
   // Criador do evento ou admin do grupo podem editar, excluir, cobrar e fechar etapas
@@ -651,9 +670,9 @@ export const EventDetails = () => {
               </p>
 
               {!event.gameOptions || event.gameOptions.length === 0 ? (
-                <p className="empty-state">
-                  Nenhum jogo sugerido ainda. Puxe algo da sua Ludoteca!
-                </p>
+                <EmptyState icon="🧩" title="Nenhum jogo sugerido ainda." compact>
+                  Puxe algo da sua Ludoteca!
+                </EmptyState>
               ) : (
                 <>
                   <div className="event-options">
@@ -991,9 +1010,20 @@ export const EventDetails = () => {
           }
         >
           {loadingMyGames ? (
-            <p className="empty-state">Carregando sua ludoteca...</p>
+            <SkeletonRows label="Carregando sua ludoteca" rows={3} />
           ) : myGames.length === 0 ? (
-            <p className="empty-state">Sua ludoteca está vazia. Adicione jogos primeiro!</p>
+            <EmptyState
+              icon="🎲"
+              title="Sua ludoteca está vazia."
+              action={
+                <Link to="/ludoteca" className="btn-secondary btn-sm">
+                  Ir para a ludoteca
+                </Link>
+              }
+              compact
+            >
+              Adicione jogos primeiro!
+            </EmptyState>
           ) : (
             <>
               <p className="muted event-hint">
@@ -1012,7 +1042,11 @@ export const EventDetails = () => {
                 Selecionar {suggestableGames.length === myGames.length ? 'todos' : 'os filtrados'}
               </button>
               {suggestableGames.length === 0 && (
-                <p className="empty-state">Nenhum jogo da sua ludoteca combina com os filtros.</p>
+                <EmptyState
+                  icon="🔎"
+                  title="Nenhum jogo da sua ludoteca combina com os filtros."
+                  compact
+                />
               )}
               <div className="event-options">
                 {suggestableGames.map((g) => (

@@ -17,6 +17,8 @@ import {
 import { Modal } from '../components/Modal';
 import { EventFormModal, type EventFormValues } from '../components/EventFormModal';
 import toast from 'react-hot-toast';
+import { SkeletonRows } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
 import './GroupDetails.scss';
 
 // Quantas jogatinas anteriores aparecem antes de "Mostrar todas"
@@ -197,15 +199,31 @@ export const GroupDetails = () => {
           <section>
             <h2 className="group-section-title">Eventos</h2>
             {loading ? (
-              <p className="empty-state">Carregando eventos...</p>
+              <SkeletonRows label="Carregando eventos" rows={3} thumb={false} />
             ) : events.length === 0 ? (
-              <p className="card empty-state">
-                Nenhum evento criado ainda. Que tal marcar a próxima jogatina?
-              </p>
+              <EmptyState
+                icon="🗓️"
+                title="Nenhum evento criado ainda."
+                action={
+                  <button onClick={() => setShowModal(true)} className="btn-primary btn-sm">
+                    + Criar evento
+                  </button>
+                }
+              >
+                Que tal marcar a próxima jogatina?
+              </EmptyState>
             ) : upcoming.length === 0 ? (
-              <p className="card empty-state">
-                Nenhum evento em andamento. Que tal marcar a próxima jogatina?
-              </p>
+              <EmptyState
+                icon="🗓️"
+                title="Nenhum evento em andamento."
+                action={
+                  <button onClick={() => setShowModal(true)} className="btn-primary btn-sm">
+                    + Criar evento
+                  </button>
+                }
+              >
+                Que tal marcar a próxima jogatina?
+              </EmptyState>
             ) : (
               <ul className="group-events">
                 {upcoming.map((ev) => (
@@ -297,9 +315,13 @@ export const GroupDetails = () => {
                   onChange={(e) => setGamesQuery(e.target.value)}
                 />
                 {groupGames.length === 0 ? (
-                  <p className="empty-state">Nenhum membro cadastrou jogos ainda.</p>
+                  <EmptyState icon="🎲" title="Nenhum membro cadastrou jogos ainda." compact />
                 ) : searchGroupGames(groupGames, gamesQuery).length === 0 ? (
-                  <p className="empty-state">Nenhum jogo ou pessoa combina com a busca.</p>
+                  <EmptyState
+                    icon="🔎"
+                    title="Nenhum jogo ou pessoa combina com a busca."
+                    compact
+                  />
                 ) : (
                   <ul className="group-games-list">
                     {searchGroupGames(groupGames, gamesQuery).map((g) => (
@@ -401,9 +423,9 @@ export const GroupDetails = () => {
           onClose={() => setViewingCollectionUserId(null)}
         >
           {loadingMemberGames ? (
-            <p className="empty-state">Carregando jogos...</p>
+            <SkeletonRows label="Carregando jogos" rows={4} />
           ) : memberGames.length === 0 ? (
-            <p className="empty-state">Nenhum jogo na ludoteca.</p>
+            <EmptyState icon="🎲" title="Nenhum jogo na ludoteca." compact />
           ) : (
             <ul className="group-member-games">
               {memberGames.map((g) => (

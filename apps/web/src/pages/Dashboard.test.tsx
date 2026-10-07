@@ -5,6 +5,7 @@ import { resetAuth } from '../test/auth';
 import { renderPage } from '../test/renderPage';
 import { groupService } from '../services/groupService';
 import { eventService } from '../services/eventService';
+import { deferred } from '../test/deferred';
 import { Dashboard } from './Dashboard';
 
 vi.mock('../context/AuthContext', async () => (await import('../test/auth')).authModuleMock);
@@ -222,5 +223,55 @@ describe('Início', () => {
     const links = list.getAllByRole('link', { name: '+ Agenda' });
     expect(links).toHaveLength(1);
     expect(links[0].getAttribute('href')).toContain('calendar.google.com');
+  });
+});
+
+describe('Início — carregamento e estados vazios', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(eventService.getAttendance).mockResolvedValue([]);
+  });
+
+  it('enquanto carrega mostra esqueletos no destaque, em "Precisa de você" e nos eventos', async () => {
+    const groups = deferred<{ id: string; name: string; adminId: string; inviteToken: string }[]>();
+    vi.mocked(groupService.fetchUserGroups).mockReturnValue(groups.promise);
+    renderPage(<Dashboard />);
+
+    expect(screen.getByText('Carregando a próxima jogatina')).toBeTruthy();
+    expect(screen.getByText('Carregando o que precisa de você')).toBeTruthy();
+    expect(screen.getByText('Carregando eventos')).toBeTruthy();
+    // Os grupos também ainda não chegaram: não dá para dizer que a pessoa não tem nenhum
+    expect(screen.getByText('Carregando grupos')).toBeTruthy();
+    expect(screen.queryByText(/Nenhum evento agendado/)).toBeNull();
+    expect(screen.queryByText(/não participa de nenhum grupo/)).toBeNull();
+
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([]);
+    groups.resolve([{ id: 'g1', name: 'Sexta', adminId: 'u-edu', inviteToken: 't' }]);
+
+    expect(await screen.findByText(/Nenhum evento agendado/)).toBeTruthy();
+    expect(screen.queryByText('Carregando eventos')).toBeNull();
+    expect(screen.queryByText('Carregando grupos')).toBeNull();
+    expect(screen.getByRole('link', { name: /Sexta/ })).toBeTruthy();
+    expect(screen.queryByText('Carregando a próxima jogatina')).toBeNull();
+  });
+
+  it('sem eventos, o estado vazio leva aos grupos', async () => {
+    vi.mocked(groupService.fetchUserGroups).mockResolvedValue([
+      { id: 'g1', name: 'Sexta', adminId: 'u-edu', inviteToken: 't' },
+    ]);
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([]);
+    renderPage(<Dashboard />);
+
+    const link = await screen.findByRole('link', { name: 'Ver meus grupos' });
+    expect(link.getAttribute('href')).toBe('/grupos');
+  });
+
+  it('sem grupos, o estado vazio oferece criar um', async () => {
+    vi.mocked(groupService.fetchUserGroups).mockResolvedValue([]);
+    renderPage(<Dashboard />);
+
+    const link = await screen.findByRole('link', { name: 'Criar um grupo' });
+    expect(link.getAttribute('href')).toBe('/grupos');
   });
 });

@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { resetAuth } from '../test/auth';
 import { renderPage } from '../test/renderPage';
 import { groupService } from '../services/groupService';
+import { deferred } from '../test/deferred';
 import { Grupos } from './Grupos';
 
 vi.mock('../context/AuthContext', async () => (await import('../test/auth')).authModuleMock);
@@ -54,5 +55,25 @@ describe('Grupos', () => {
     expect(groupService.createGroup).toHaveBeenCalledWith('u-edu', 'Domingo', 'Edu');
     expect(toast.success).toHaveBeenCalledWith('Grupo criado com sucesso!');
     expect(groupService.fetchUserGroups).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('Grupos — carregamento e estado vazio', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+  });
+
+  it('enquanto a lista chega mostra o esqueleto, sem dizer que não há grupos', async () => {
+    const groups = deferred<never[]>();
+    vi.mocked(groupService.fetchUserGroups).mockReturnValue(groups.promise);
+    renderPage(<Grupos />);
+
+    expect(screen.getByText('Carregando grupos')).toBeTruthy();
+    expect(screen.queryByText(/não participa de nenhum grupo/)).toBeNull();
+
+    groups.resolve([]);
+    expect(await screen.findByText('Você ainda não participa de nenhum grupo.')).toBeTruthy();
+    expect(screen.queryByText('Carregando grupos')).toBeNull();
   });
 });

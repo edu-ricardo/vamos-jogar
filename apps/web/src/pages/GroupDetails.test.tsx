@@ -7,6 +7,7 @@ import { fakeAuth, resetAuth } from '../test/auth';
 import { renderPage } from '../test/renderPage';
 import { groupService } from '../services/groupService';
 import { eventService } from '../services/eventService';
+import { deferred } from '../test/deferred';
 import { ludotecaService } from '../services/ludotecaService';
 import { GroupDetails } from './GroupDetails';
 
@@ -139,7 +140,8 @@ describe('Grupo — criar evento', () => {
   const fillAndSubmit = async () => {
     const user = userEvent.setup();
     await open('u-ana');
-    await user.click(screen.getByRole('button', { name: '+ Criar evento' }));
+    // O botão do cabeçalho (o do estado vazio, quando há, vem depois)
+    await user.click(screen.getAllByRole('button', { name: '+ Criar evento' })[0]);
     await user.type(screen.getByLabelText('Título do evento'), 'Noite dos euros');
     await user.type(screen.getByLabelText('Data'), '2026-10-20');
     await user.type(screen.getByLabelText('Início'), '19:00');
@@ -386,5 +388,39 @@ describe('Grupo — histórico', () => {
     await open('u-ana');
     expect(screen.getByText(/Nenhum evento em andamento/)).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Histórico' })).toBeTruthy();
+  });
+});
+
+describe('Grupo — carregamento e estados vazios', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+  });
+
+  it('enquanto os eventos chegam mostra o esqueleto, sem dizer que não há eventos', async () => {
+    const events = deferred<never[]>();
+    vi.mocked(eventService.fetchGroupEvents).mockReturnValue(events.promise);
+    await open('u-ana');
+
+    expect(screen.getByText('Carregando eventos')).toBeTruthy();
+    expect(screen.queryByText(/Nenhum evento criado ainda/)).toBeNull();
+
+    events.resolve([]);
+    expect(await screen.findByText('Nenhum evento criado ainda.')).toBeTruthy();
+    expect(screen.queryByText('Carregando eventos')).toBeNull();
+  });
+
+  it('sem eventos, o estado vazio oferece criar o primeiro e abre o formulário', async () => {
+    const user = userEvent.setup();
+    vi.mocked(eventService.fetchGroupEvents).mockResolvedValue([]);
+    await open('u-ana');
+
+    const empty = within(
+      (await screen.findByText('Nenhum evento criado ainda.')).closest('.empty-block')!,
+    );
+    await user.click(empty.getByRole('button', { name: '+ Criar evento' }));
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
   });
 });

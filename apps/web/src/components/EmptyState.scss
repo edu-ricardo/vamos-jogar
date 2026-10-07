@@ -1,0 +1,37 @@
+.empty-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 16px;
+  text-align: center;
+
+  &.compact {
+    padding: 20px 8px;
+  }
+}
+
+.empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-primary-transparent);
+  font-size: 1.6rem;
+}
+
+.empty-title {
+  font-weight: 600;
+}
+
+.empty-text {
+  max-width: 36ch;
+  font-size: 0.9rem;
+}
+
+.empty-action {
+  margin-top: 10px;
+}

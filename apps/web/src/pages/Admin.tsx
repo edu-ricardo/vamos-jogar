@@ -9,6 +9,8 @@ import {
   type AdminUser,
 } from '../services/adminService';
 import { Modal } from '../components/Modal';
+import { SkeletonRows } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
 import { EVENT_STATUS_LABEL } from '../services/eventResults';
 import './Admin.scss';
 
@@ -141,7 +143,7 @@ export const Admin = () => {
       {error ? (
         <p className="card empty-state">{error}</p>
       ) : loading ? (
-        <p className="empty-state">Carregando...</p>
+        <SkeletonRows label="Carregando" rows={4} thumb={false} />
       ) : tab === 'users' ? (
         <section>
           <input
@@ -217,7 +219,7 @@ export const Admin = () => {
         </section>
       ) : tab === 'groups' ? (
         <ul className="admin-groups">
-          {groups.length === 0 && <p className="empty-state">Nenhum grupo criado.</p>}
+          {groups.length === 0 && <EmptyState icon="👥" title="Nenhum grupo criado." compact />}
           {groups.map((g) => (
             <li key={g.id} className="card">
               <h3>{g.name}</h3>
@@ -262,7 +264,7 @@ export const Admin = () => {
       ) : tab === 'events' ? (
         <ul className="admin-list">
           {events.length === 0 && (
-            <p className="empty-state">Nenhum evento em votação no momento.</p>
+            <EmptyState icon="🗓️" title="Nenhum evento em votação no momento." compact />
           )}
           {events.map((ev) => (
             <li key={ev.id} className="card admin-event">
@@ -297,7 +299,7 @@ export const Admin = () => {
       ) : (
         <section className="card">
           {logs.length === 0 ? (
-            <p className="empty-state">Nenhuma ação registrada ainda.</p>
+            <EmptyState icon="📋" title="Nenhuma ação registrada ainda." compact />
           ) : (
             <ul className="admin-logs">
               {logs.map((l) => (

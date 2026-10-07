@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { resetAuth } from '../test/auth';
 import { renderPage } from '../test/renderPage';
 import { ludotecaService } from '../services/ludotecaService';
+import { deferred } from '../test/deferred';
 import { Ludoteca } from './Ludoteca';
 
 vi.mock('../context/AuthContext', async () => (await import('../test/auth')).authModuleMock);
@@ -231,5 +232,36 @@ describe('Ludoteca — cadastro manual', () => {
     expect(dialog.queryByLabelText('Nome do jogo')).toBeNull();
     expect(dialog.getByText('Buscar e adicionar expansão')).toBeTruthy();
     expect(dialog.getByText('Expansões adicionadas')).toBeTruthy();
+  });
+});
+
+describe('Ludoteca — carregamento e estado vazio', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+  });
+
+  it('antes de a coleção chegar não diz que ela está vazia: mostra o esqueleto', async () => {
+    const collection = deferred<never[]>();
+    vi.mocked(ludotecaService.fetchUserCollection).mockReturnValue(collection.promise);
+    renderPage(<Ludoteca />);
+
+    expect(screen.getByText('Carregando sua ludoteca')).toBeTruthy();
+    expect(screen.queryByText('Sua ludoteca está vazia.')).toBeNull();
+    // Sem contagem enquanto não se sabe quantos jogos são
+    expect(screen.getByRole('heading', { name: 'Meus jogos' })).toBeTruthy();
+
+    collection.resolve([]);
+    expect(await screen.findByText('Sua ludoteca está vazia.')).toBeTruthy();
+    expect(screen.queryByText('Carregando sua ludoteca')).toBeNull();
+  });
+
+  it('se a coleção falhar ao carregar, o esqueleto não fica para sempre', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(ludotecaService.fetchUserCollection).mockRejectedValue(new Error('fora do ar'));
+    renderPage(<Ludoteca />);
+
+    expect(await screen.findByText('Sua ludoteca está vazia.')).toBeTruthy();
+    expect(screen.queryByText('Carregando sua ludoteca')).toBeNull();
   });
 });

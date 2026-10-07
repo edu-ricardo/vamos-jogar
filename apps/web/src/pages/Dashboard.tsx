@@ -13,6 +13,8 @@ import {
   upcomingEntries,
   type DashboardEntry,
 } from '../services/dashboardInsights';
+import { SkeletonCard, SkeletonRows } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
 import './Dashboard.scss';
 
 // Quantos dos próximos eventos têm a presença consultada (uma chamada à API por evento)
@@ -155,6 +157,12 @@ export const Dashboard = () => {
         </div>
       </header>
 
+      {loadingEvents && (
+        <div className="dashboard-skeleton-hero">
+          <SkeletonCard label="Carregando a próxima jogatina" lines={3} />
+        </div>
+      )}
+
       {next && nextInfo && countdown && (
         <section
           className={`card dashboard-hero dashboard-hero-${countdown.urgency}`}
@@ -194,6 +202,7 @@ export const Dashboard = () => {
 
       <div className="dashboard-columns">
         <div className="dashboard-main">
+          {loadingEvents && <SkeletonCard label="Carregando o que precisa de você" lines={2} />}
           {!loadingEvents && (actions.length > 0 || upcoming.length > 0) && (
             <section className="card dashboard-actions">
               <h2 className="dashboard-section-title">
@@ -224,9 +233,20 @@ export const Dashboard = () => {
             <h2 className="dashboard-section-title">Próximos eventos</h2>
 
             {loadingEvents ? (
-              <p className="empty-state">Buscando eventos...</p>
+              <SkeletonRows label="Carregando eventos" rows={3} />
             ) : upcoming.length === 0 ? (
-              <p className="empty-state">Nenhum evento agendado para o futuro.</p>
+              <EmptyState
+                icon="📅"
+                title="Nenhum evento agendado para o futuro."
+                action={
+                  <Link to="/grupos" className="btn-secondary btn-sm">
+                    Ver meus grupos
+                  </Link>
+                }
+                compact
+              >
+                Crie um evento em um dos seus grupos para marcar a próxima jogatina.
+              </EmptyState>
             ) : (
               <ul className="dashboard-events">
                 {upcoming.map((entry) => {
@@ -272,11 +292,21 @@ export const Dashboard = () => {
               Ver todos
             </Link>
           </div>
-          {groups.length === 0 ? (
-            <p className="empty-state">
-              Você ainda não participa de nenhum grupo. <Link to="/grupos">Crie um</Link> ou peça um
-              convite.
-            </p>
+          {groups.length === 0 && loadingEvents ? (
+            <SkeletonRows label="Carregando grupos" rows={2} thumb={false} />
+          ) : groups.length === 0 ? (
+            <EmptyState
+              icon="👥"
+              title="Você ainda não participa de nenhum grupo."
+              action={
+                <Link to="/grupos" className="btn-primary btn-sm">
+                  Criar um grupo
+                </Link>
+              }
+              compact
+            >
+              Crie um grupo ou peça um convite a quem organiza as jogatinas.
+            </EmptyState>
           ) : (
             <ul className="dashboard-groups">
               {groups.map((g) => (

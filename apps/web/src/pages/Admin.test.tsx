@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { resetAuth } from '../test/auth';
 import { renderPage } from '../test/renderPage';
 import { adminService } from '../services/adminService';
+import { deferred } from '../test/deferred';
 import { Admin } from './Admin';
 
 vi.mock('../context/AuthContext', async () => (await import('../test/auth')).authModuleMock);
@@ -237,5 +238,25 @@ describe('Admin — grupos, eventos e registro', () => {
     expect(await screen.findByText('Cobrança de votos enviada')).toBeTruthy();
     expect(screen.getByText('Sexta: Jogatina (1 de 2)')).toBeTruthy();
     expect(screen.getByText('por edu@exemplo.test')).toBeTruthy();
+  });
+});
+
+describe('Admin — carregamento', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+  });
+
+  it('enquanto a lista chega mostra o esqueleto, sem dizer que está vazia', async () => {
+    const users = deferred<never[]>();
+    vi.mocked(adminService.listUsers).mockReturnValue(users.promise);
+    renderPage(<Admin />);
+
+    expect(screen.getByText('Carregando')).toBeTruthy();
+    expect(screen.queryByPlaceholderText(/Buscar/)).toBeNull();
+
+    users.resolve([]);
+    expect(await screen.findByPlaceholderText(/Buscar/)).toBeTruthy();
+    expect(screen.queryByText('Carregando')).toBeNull();
   });
 });

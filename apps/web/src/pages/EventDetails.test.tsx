@@ -9,6 +9,7 @@ import { eventService } from '../services/eventService';
 import { groupService } from '../services/groupService';
 import { ludotecaService } from '../services/ludotecaService';
 import { downloadIcs } from '../services/calendarFile';
+import { deferred } from '../test/deferred';
 import { EventDetails } from './EventDetails';
 
 vi.mock('../context/AuthContext', async () => (await import('../test/auth')).authModuleMock);
@@ -755,5 +756,37 @@ describe('Evento — ranking de jogos', () => {
     const copied = await navigator.clipboard.readText();
     expect(copied).toContain('- Catan: 4 pt(s) (2 voto(s))');
     expect(copied).toContain('- Azul: 1 pt(s) (1 voto(s))');
+  });
+});
+
+describe('Evento — carregamento', () => {
+  beforeEach(() => {
+    resetAuth();
+    vi.clearAllMocks();
+    vi.mocked(groupService.fetchGroupMembers).mockResolvedValue(members);
+    vi.mocked(eventService.fetchFavoriteLocations).mockResolvedValue([]);
+    vi.mocked(eventService.getAttendance).mockResolvedValue([]);
+  });
+
+  it('enquanto o evento chega mostra o esqueleto da página, nas duas colunas', async () => {
+    const details = deferred<never>();
+    vi.mocked(eventService.getEventDetails).mockReturnValue(details.promise);
+    vi.mocked(groupService.fetchGroupDetails).mockResolvedValue({
+      id: 'g1',
+      name: 'Sexta',
+      adminId: 'u-ana',
+      inviteToken: 't',
+    });
+    renderPage(<EventDetails />, { path: '/event/:groupId/:eventId', route: '/event/g1/e1' });
+
+    expect(screen.getByText('Carregando o evento')).toBeTruthy();
+    expect(screen.getByText('Carregando quem já votou')).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+
+    details.resolve(dateEvent() as never);
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe(
+      'Jogatina de aniversário',
+    );
+    expect(screen.queryByText('Carregando o evento')).toBeNull();
   });
 });

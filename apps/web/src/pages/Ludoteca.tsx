@@ -6,6 +6,8 @@ import { filterCollection, sortCollection, type GameSort } from '../services/lud
 import { Modal } from '../components/Modal';
 import { GameFilters, emptyGameFilters, toCollectionFilters } from '../components/GameFilters';
 import toast from 'react-hot-toast';
+import { SkeletonGrid, SkeletonRows } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
 import './Ludoteca.scss';
 
 // Capa do jogo ou um quadro vazio quando a fonte não tem imagem
@@ -24,6 +26,8 @@ export const Ludoteca = () => {
   const [myCollection, setMyCollection] = useState<Game[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Antes de a coleção chegar, não dá para dizer que ela está vazia
+  const [loadingCollection, setLoadingCollection] = useState(true);
 
   // Estados do Modal
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
@@ -54,6 +58,8 @@ export const Ludoteca = () => {
       setMyCollection(collection);
     } catch (err) {
       console.error(err);
+    } finally {
+      setLoadingCollection(false);
     }
   };
 
@@ -354,11 +360,13 @@ export const Ludoteca = () => {
         <section>
           <div className="ludoteca-collection-header">
             <h2>
-              Meus jogos (
-              {filteredCollection.length === myCollection.length
-                ? myCollection.length
-                : `${filteredCollection.length} de ${myCollection.length}`}
-              )
+              Meus jogos
+              {!loadingCollection &&
+                ` (${
+                  filteredCollection.length === myCollection.length
+                    ? myCollection.length
+                    : `${filteredCollection.length} de ${myCollection.length}`
+                })`}
             </h2>
             <GameFilters
               values={filters}
@@ -369,10 +377,14 @@ export const Ludoteca = () => {
             />
           </div>
 
-          {myCollection.length === 0 ? (
-            <p className="card empty-state">Sua ludoteca está vazia.</p>
+          {loadingCollection ? (
+            <SkeletonGrid label="Carregando sua ludoteca" />
+          ) : myCollection.length === 0 ? (
+            <EmptyState icon="🎲" title="Sua ludoteca está vazia.">
+              Pesquise um jogo ao lado e adicione à sua coleção, ou cadastre um manualmente.
+            </EmptyState>
           ) : filteredCollection.length === 0 ? (
-            <p className="card empty-state">Nenhum jogo combina com os filtros.</p>
+            <EmptyState icon="🔎" title="Nenhum jogo combina com os filtros." />
           ) : (
             <ul className="ludoteca-grid">
               {filteredCollection.map((game) => (
@@ -435,7 +447,7 @@ export const Ludoteca = () => {
           }
         >
           {detailsLoading ? (
-            <p className="empty-state">Buscando detalhes do jogo...</p>
+            <SkeletonRows label="Buscando detalhes do jogo" rows={2} />
           ) : (
             <>
               <div className="ludoteca-details">

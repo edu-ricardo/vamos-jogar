@@ -1,5 +1,13 @@
 @use '../styles/variables' as *;
 
+.event-skeleton-header {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: min(360px, 100%);
+  margin-bottom: 24px;
+}
+
 .event-status {
   margin-top: 8px;
 }

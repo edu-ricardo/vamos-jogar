@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { groupService, type Group } from '../services/groupService';
 import toast from 'react-hot-toast';
+import { SkeletonRows } from '../components/Skeleton';
+import { EmptyState } from '../components/EmptyState';
 import './Grupos.scss';
 
 export const Grupos = () => {
@@ -69,9 +71,11 @@ export const Grupos = () => {
       </form>
 
       {loading ? (
-        <p className="empty-state">Carregando grupos...</p>
+        <SkeletonRows label="Carregando grupos" rows={3} thumb={false} />
       ) : groups.length === 0 ? (
-        <p className="empty-state">Você ainda não participa de nenhum grupo.</p>
+        <EmptyState icon="👥" title="Você ainda não participa de nenhum grupo.">
+          Crie o primeiro pelo campo acima ou abra o link de convite que alguém te mandou.
+        </EmptyState>
       ) : (
         <ul className="grupos-list">
           {groups.map((g) => (
